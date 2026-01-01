@@ -7,7 +7,10 @@ export default function AssetSection() {
   const [assets, setAssets] = useState<any[]>([]);
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
+
   const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
     setAssets(getData("assets"));
@@ -29,11 +32,24 @@ export default function AssetSection() {
     persist(assets.filter((_, i) => i !== index));
   };
 
-  const saveEdit = (index: number, updated: any) => {
-    const updatedAssets = [...assets];
-    updatedAssets[index] = updated;
-    persist(updatedAssets);
+  const startEdit = (index: number) => {
+    setEditIndex(index);
+    setEditName(assets[index].name);
+    setEditValue(assets[index].value);
+  };
+
+  const saveEdit = () => {
+    if (editIndex === null) return;
+    const updated = [...assets];
+    updated[editIndex] = { name: editName, value: editValue };
+    persist(updated);
+    cancelEdit();
+  };
+
+  const cancelEdit = () => {
     setEditIndex(null);
+    setEditName("");
+    setEditValue("");
   };
 
   return (
@@ -49,20 +65,15 @@ export default function AssetSection() {
           <li key={i}>
             {editIndex === i ? (
               <>
-                <input
-                  value={a.name}
-                  onChange={e => saveEdit(i, { ...a, name: e.target.value })}
-                />
-                <input
-                  value={a.value}
-                  onChange={e => saveEdit(i, { ...a, value: e.target.value })}
-                />
-                <button onClick={() => setEditIndex(null)}>Done</button>
+                <input value={editName} onChange={e => setEditName(e.target.value)} />
+                <input value={editValue} onChange={e => setEditValue(e.target.value)} />
+                <button onClick={saveEdit}>Save</button>
+                <button onClick={cancelEdit}>Cancel</button>
               </>
             ) : (
               <>
                 {a.name} – ₹{a.value}
-                <button onClick={() => setEditIndex(i)}>Edit</button>
+                <button onClick={() => startEdit(i)}>Edit</button>
                 <button onClick={() => deleteAsset(i)}>Delete</button>
               </>
             )}
