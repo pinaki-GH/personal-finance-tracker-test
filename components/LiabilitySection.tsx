@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getData, saveData } from "@/utils/storage";
+import { getData, saveData } from "../utils/storage";
 
 export default function LiabilitySection() {
   const [items, setItems] = useState<any[]>([]);
