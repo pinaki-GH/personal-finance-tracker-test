@@ -7,7 +7,7 @@ export default function NetWorthSummary() {
   const [totalAssets, setTotalAssets] = useState(0);
   const [totalLiabilities, setTotalLiabilities] = useState(0);
 
-  useEffect(() => {
+  const calculate = () => {
     const assets = getData("assets");
     const liabilities = getData("liabilities");
 
@@ -23,6 +23,18 @@ export default function NetWorthSummary() {
 
     setTotalAssets(assetSum);
     setTotalLiabilities(liabilitySum);
+  };
+
+  useEffect(() => {
+    // Initial load
+    calculate();
+
+    // Listen for updates
+    window.addEventListener("finance-updated", calculate);
+
+    return () => {
+      window.removeEventListener("finance-updated", calculate);
+    };
   }, []);
 
   const netWorth = totalAssets - totalLiabilities;
