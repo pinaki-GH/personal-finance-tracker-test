@@ -79,6 +79,11 @@ export default function AssetSection() {
     setEditIndex(null);
   };
 
+  const cancelEdit = () => {
+    setEditIndex(null);
+    setEditForm(emptyForm);
+  };
+
   const deleteAsset = (i: number) =>
     persist(assets.filter((_, idx) => idx !== i));
 
@@ -86,51 +91,55 @@ export default function AssetSection() {
     <section>
       <h2>🏦 Assets</h2>
 
-      {/* Asset Form */}
-      <div className="form-grid">
-        <div>
-          <label>Asset Name</label>
-          <input value={form.assetName} onChange={e => setForm({ ...form, assetName: e.target.value })} />
+      {/* Asset Creation Card */}
+      <div className="card">
+        <h3>Add New Asset</h3>
+
+        <div className="form-grid">
+          <div>
+            <label>Asset Name</label>
+            <input value={form.assetName} onChange={e => setForm({ ...form, assetName: e.target.value })} />
+          </div>
+
+          <div>
+            <label>Purchase Date</label>
+            <input type="date" value={formatDate(form.purchaseDate)} onChange={e => setForm({ ...form, purchaseDate: e.target.value ? new Date(e.target.value) : null })} />
+          </div>
+
+          <div>
+            <label>Asset Value</label>
+            <input value={form.assetValue} onChange={e => setForm({ ...form, assetValue: e.target.value })} />
+          </div>
+
+          <div>
+            <label>Value Record Date</label>
+            <input type="date" value={formatDate(form.valueRecordDate)} onChange={e => setForm({ ...form, valueRecordDate: e.target.value ? new Date(e.target.value) : null })} />
+          </div>
+
+          <div>
+            <label>Asset ID</label>
+            <input value={form.assetId} onChange={e => setForm({ ...form, assetId: e.target.value })} />
+          </div>
+
+          <div>
+            <label>Asset ID Description</label>
+            <input value={form.assetIdDescription} onChange={e => setForm({ ...form, assetIdDescription: e.target.value })} />
+          </div>
+
+          <div>
+            <label>Owner</label>
+            <input value={form.owner} onChange={e => setForm({ ...form, owner: e.target.value })} />
+          </div>
+
+          <div>
+            <label>Institution</label>
+            <input value={form.institution} onChange={e => setForm({ ...form, institution: e.target.value })} />
+          </div>
         </div>
 
-        <div>
-          <label>Purchase Date</label>
-          <input type="date" value={formatDate(form.purchaseDate)} onChange={e => setForm({ ...form, purchaseDate: e.target.value ? new Date(e.target.value) : null })} />
+        <div className="card-actions">
+          <button className="primary" onClick={addAsset}>Add Asset</button>
         </div>
-
-        <div>
-          <label>Asset Value</label>
-          <input value={form.assetValue} onChange={e => setForm({ ...form, assetValue: e.target.value })} />
-        </div>
-
-        <div>
-          <label>Value Record Date</label>
-          <input type="date" value={formatDate(form.valueRecordDate)} onChange={e => setForm({ ...form, valueRecordDate: e.target.value ? new Date(e.target.value) : null })} />
-        </div>
-
-        <div>
-          <label>Asset ID</label>
-          <input value={form.assetId} onChange={e => setForm({ ...form, assetId: e.target.value })} />
-        </div>
-
-        <div>
-          <label>Asset ID Description</label>
-          <input value={form.assetIdDescription} onChange={e => setForm({ ...form, assetIdDescription: e.target.value })} />
-        </div>
-
-        <div>
-          <label>Owner</label>
-          <input value={form.owner} onChange={e => setForm({ ...form, owner: e.target.value })} />
-        </div>
-
-        <div>
-          <label>Institution</label>
-          <input value={form.institution} onChange={e => setForm({ ...form, institution: e.target.value })} />
-        </div>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <button onClick={addAsset}>Add Asset</button>
       </div>
 
       {/* Asset Table */}
@@ -143,27 +152,47 @@ export default function AssetSection() {
               <th>Asset Value</th>
               <th>Value Record Date</th>
               <th>Asset ID</th>
-              <th>Asset ID Description</th>
+              <th>ID Description</th>
               <th>Owner</th>
               <th>Institution</th>
               <th>Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {assets.map((a, i) => (
               <tr key={i}>
-                <td>{a.assetName}</td>
-                <td>{formatDate(a.purchaseDate)}</td>
-                <td>₹{Number(a.assetValue).toLocaleString()}</td>
-                <td>{formatDate(a.valueRecordDate)}</td>
-                <td>{a.assetId}</td>
-                <td>{a.assetIdDescription}</td>
-                <td>{a.owner}</td>
-                <td>{a.institution}</td>
-                <td>
-                  <button onClick={() => startEdit(i)}>Edit</button>
-                  <button style={{ marginLeft: 8 }} onClick={() => deleteAsset(i)}>Delete</button>
-                </td>
+                {editIndex === i ? (
+                  <>
+                    <td><input value={editForm.assetName} onChange={e => setEditForm({ ...editForm, assetName: e.target.value })} /></td>
+                    <td><input type="date" value={formatDate(editForm.purchaseDate)} onChange={e => setEditForm({ ...editForm, purchaseDate: e.target.value ? new Date(e.target.value) : null })} /></td>
+                    <td><input value={editForm.assetValue} onChange={e => setEditForm({ ...editForm, assetValue: e.target.value })} /></td>
+                    <td><input type="date" value={formatDate(editForm.valueRecordDate)} onChange={e => setEditForm({ ...editForm, valueRecordDate: e.target.value ? new Date(e.target.value) : null })} /></td>
+                    <td><input value={editForm.assetId} onChange={e => setEditForm({ ...editForm, assetId: e.target.value })} /></td>
+                    <td><input value={editForm.assetIdDescription} onChange={e => setEditForm({ ...editForm, assetIdDescription: e.target.value })} /></td>
+                    <td><input value={editForm.owner} onChange={e => setEditForm({ ...editForm, owner: e.target.value })} /></td>
+                    <td><input value={editForm.institution} onChange={e => setEditForm({ ...editForm, institution: e.target.value })} /></td>
+                    <td className="actions">
+                      <button onClick={saveEdit}>Save</button>
+                      <button onClick={cancelEdit}>Cancel</button>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td>{a.assetName}</td>
+                    <td>{formatDate(a.purchaseDate)}</td>
+                    <td>₹{Number(a.assetValue).toLocaleString()}</td>
+                    <td>{formatDate(a.valueRecordDate)}</td>
+                    <td>{a.assetId}</td>
+                    <td>{a.assetIdDescription}</td>
+                    <td>{a.owner}</td>
+                    <td>{a.institution}</td>
+                    <td className="actions">
+                      <button onClick={() => startEdit(i)}>Edit</button>
+                      <button className="danger" onClick={() => deleteAsset(i)}>Delete</button>
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>
