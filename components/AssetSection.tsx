@@ -14,58 +14,51 @@ type Asset = {
   institution: string;
 };
 
-// Used only for persistence
 type StoredAsset = Omit<Asset, "purchaseDate" | "valueRecordDate"> & {
   purchaseDate: string | null;
   valueRecordDate: string | null;
 };
 
+const emptyForm: Asset = {
+  assetName: "",
+  purchaseDate: null,
+  assetValue: "",
+  valueRecordDate: null,
+  assetId: "",
+  assetIdDescription: "",
+  owner: "",
+  institution: ""
+};
+
 export default function AssetSection() {
   const [assets, setAssets] = useState<Asset[]>([]);
-
-  const emptyForm: Asset = {
-    assetName: "",
-    purchaseDate: null,
-    assetValue: "",
-    valueRecordDate: null,
-    assetId: "",
-    assetIdDescription: "",
-    owner: "",
-    institution: ""
-  };
-
   const [form, setForm] = useState<Asset>(emptyForm);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Asset>(emptyForm);
 
-  // 🔁 Load & convert dates
   useEffect(() => {
     const stored: StoredAsset[] = getData("assets");
-
-    const hydrated: Asset[] = stored.map(a => ({
-      ...a,
-      purchaseDate: a.purchaseDate ? new Date(a.purchaseDate) : null,
-      valueRecordDate: a.valueRecordDate ? new Date(a.valueRecordDate) : null
-    }));
-
-    setAssets(hydrated);
+    setAssets(
+      stored.map(a => ({
+        ...a,
+        purchaseDate: a.purchaseDate ? new Date(a.purchaseDate) : null,
+        valueRecordDate: a.valueRecordDate ? new Date(a.valueRecordDate) : null
+      }))
+    );
   }, []);
 
-  // 🔁 Persist & dehydrate dates
   const persist = (updated: Asset[]) => {
     const dehydrated: StoredAsset[] = updated.map(a => ({
       ...a,
-      purchaseDate: a.purchaseDate ? a.purchaseDate.toISOString() : null,
-      valueRecordDate: a.valueRecordDate ? a.valueRecordDate.toISOString() : null
+      purchaseDate: a.purchaseDate?.toISOString() ?? null,
+      valueRecordDate: a.valueRecordDate?.toISOString() ?? null
     }));
-
     setAssets(updated);
     saveData("assets", dehydrated);
   };
 
-  const handleChange = (key: keyof Asset, value: any) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-  };
+  const formatDate = (d: Date | null) =>
+    d ? d.toISOString().split("T")[0] : "";
 
   const addAsset = () => {
     if (!form.assetName || !form.assetValue) return;
@@ -73,9 +66,9 @@ export default function AssetSection() {
     setForm(emptyForm);
   };
 
-  const startEdit = (index: number) => {
-    setEditIndex(index);
-    setEditForm(assets[index]);
+  const startEdit = (i: number) => {
+    setEditIndex(i);
+    setEditForm(assets[i]);
   };
 
   const saveEdit = () => {
@@ -83,71 +76,66 @@ export default function AssetSection() {
     const updated = [...assets];
     updated[editIndex] = editForm;
     persist(updated);
-    cancelEdit();
-  };
-
-  const cancelEdit = () => {
     setEditIndex(null);
   };
 
-  const deleteAsset = (index: number) => {
-    persist(assets.filter((_, i) => i !== index));
-  };
-
-  const formatDate = (d: Date | null) =>
-    d ? d.toISOString().split("T")[0] : "";
+  const deleteAsset = (i: number) =>
+    persist(assets.filter((_, idx) => idx !== i));
 
   return (
     <section>
       <h2>🏦 Assets</h2>
 
-      {/* Add Asset Form */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-        <input
-          placeholder="Asset Name"
-          value={form.assetName}
-          onChange={e => handleChange("assetName", e.target.value)}
-        />
+      {/* Asset Form */}
+      <div className="form-grid">
+        <div>
+          <label>Asset Name</label>
+          <input value={form.assetName} onChange={e => setForm({ ...form, assetName: e.target.value })} />
+        </div>
 
-        <input
-          type="date"
-          value={formatDate(form.purchaseDate)}
-          onChange={e =>
-            handleChange(
-              "purchaseDate",
-              e.target.value ? new Date(e.target.value) : null
-            )
-          }
-        />
+        <div>
+          <label>Purchase Date</label>
+          <input type="date" value={formatDate(form.purchaseDate)} onChange={e => setForm({ ...form, purchaseDate: e.target.value ? new Date(e.target.value) : null })} />
+        </div>
 
-        <input
-          placeholder="Asset Value"
-          value={form.assetValue}
-          onChange={e => handleChange("assetValue", e.target.value)}
-        />
+        <div>
+          <label>Asset Value</label>
+          <input value={form.assetValue} onChange={e => setForm({ ...form, assetValue: e.target.value })} />
+        </div>
 
-        <input
-          type="date"
-          value={formatDate(form.valueRecordDate)}
-          onChange={e =>
-            handleChange(
-              "valueRecordDate",
-              e.target.value ? new Date(e.target.value) : null
-            )
-          }
-        />
+        <div>
+          <label>Value Record Date</label>
+          <input type="date" value={formatDate(form.valueRecordDate)} onChange={e => setForm({ ...form, valueRecordDate: e.target.value ? new Date(e.target.value) : null })} />
+        </div>
 
-        <input placeholder="Asset ID" value={form.assetId} onChange={e => handleChange("assetId", e.target.value)} />
-        <input placeholder="Asset ID Description" value={form.assetIdDescription} onChange={e => handleChange("assetIdDescription", e.target.value)} />
-        <input placeholder="Owner" value={form.owner} onChange={e => handleChange("owner", e.target.value)} />
-        <input placeholder="Institution" value={form.institution} onChange={e => handleChange("institution", e.target.value)} />
+        <div>
+          <label>Asset ID</label>
+          <input value={form.assetId} onChange={e => setForm({ ...form, assetId: e.target.value })} />
+        </div>
+
+        <div>
+          <label>Asset ID Description</label>
+          <input value={form.assetIdDescription} onChange={e => setForm({ ...form, assetIdDescription: e.target.value })} />
+        </div>
+
+        <div>
+          <label>Owner</label>
+          <input value={form.owner} onChange={e => setForm({ ...form, owner: e.target.value })} />
+        </div>
+
+        <div>
+          <label>Institution</label>
+          <input value={form.institution} onChange={e => setForm({ ...form, institution: e.target.value })} />
+        </div>
       </div>
 
-      <button onClick={addAsset}>Add Asset</button>
+      <div style={{ marginTop: 12 }}>
+        <button onClick={addAsset}>Add Asset</button>
+      </div>
 
       {/* Asset Table */}
       {assets.length > 0 && (
-        <table style={{ width: "100%", marginTop: 16, borderCollapse: "collapse" }}>
+        <table className="data-table">
           <thead>
             <tr>
               <th>Asset Name</th>
@@ -164,37 +152,18 @@ export default function AssetSection() {
           <tbody>
             {assets.map((a, i) => (
               <tr key={i}>
-                {editIndex === i ? (
-                  <>
-                    <td><input value={editForm.assetName} onChange={e => setEditForm({ ...editForm, assetName: e.target.value })} /></td>
-                    <td><input type="date" value={formatDate(editForm.purchaseDate)} onChange={e => setEditForm({ ...editForm, purchaseDate: e.target.value ? new Date(e.target.value) : null })} /></td>
-                    <td><input value={editForm.assetValue} onChange={e => setEditForm({ ...editForm, assetValue: e.target.value })} /></td>
-                    <td><input type="date" value={formatDate(editForm.valueRecordDate)} onChange={e => setEditForm({ ...editForm, valueRecordDate: e.target.value ? new Date(e.target.value) : null })} /></td>
-                    <td><input value={editForm.assetId} onChange={e => setEditForm({ ...editForm, assetId: e.target.value })} /></td>
-                    <td><input value={editForm.assetIdDescription} onChange={e => setEditForm({ ...editForm, assetIdDescription: e.target.value })} /></td>
-                    <td><input value={editForm.owner} onChange={e => setEditForm({ ...editForm, owner: e.target.value })} /></td>
-                    <td><input value={editForm.institution} onChange={e => setEditForm({ ...editForm, institution: e.target.value })} /></td>
-                    <td>
-                      <button onClick={saveEdit}>Save</button>
-                      <button onClick={cancelEdit}>Cancel</button>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td>{a.assetName}</td>
-                    <td>{formatDate(a.purchaseDate)}</td>
-                    <td>₹{a.assetValue}</td>
-                    <td>{formatDate(a.valueRecordDate)}</td>
-                    <td>{a.assetId}</td>
-                    <td>{a.assetIdDescription}</td>
-                    <td>{a.owner}</td>
-                    <td>{a.institution}</td>
-                    <td>
-                      <button onClick={() => startEdit(i)}>Edit</button>
-                      <button onClick={() => deleteAsset(i)}>Delete</button>
-                    </td>
-                  </>
-                )}
+                <td>{a.assetName}</td>
+                <td>{formatDate(a.purchaseDate)}</td>
+                <td>₹{Number(a.assetValue).toLocaleString()}</td>
+                <td>{formatDate(a.valueRecordDate)}</td>
+                <td>{a.assetId}</td>
+                <td>{a.assetIdDescription}</td>
+                <td>{a.owner}</td>
+                <td>{a.institution}</td>
+                <td>
+                  <button onClick={() => startEdit(i)}>Edit</button>
+                  <button style={{ marginLeft: 8 }} onClick={() => deleteAsset(i)}>Delete</button>
+                </td>
               </tr>
             ))}
           </tbody>
