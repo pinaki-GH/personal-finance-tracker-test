@@ -125,3 +125,32 @@ button.danger {
 .data-table td.actions {
   white-space: nowrap;
 }
+
+/* Table Scroll Container */
+.table-scroll-wrapper {
+  max-height: 320px;           /* Vertical scroll */
+  overflow-y: auto;
+  overflow-x: auto;            /* Horizontal scroll when needed */
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+/* Wider table to allow horizontal scroll during edit */
+.wide-table {
+  min-width: 1200px;
+}
+
+/* Improve scroll experience */
+.table-scroll-wrapper::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.table-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.table-scroll-wrapper::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
