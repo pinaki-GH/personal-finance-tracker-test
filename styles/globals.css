@@ -17,3 +17,7 @@ input {
 button {
   cursor: pointer;
 }
+
+button {
+  transition: background 0.2s ease;
+}
