@@ -4,47 +4,44 @@ import { useEffect, useState } from "react";
 import { getData } from "../utils/storage";
 
 export default function NetWorthSummary() {
-  const [totalAssets, setTotalAssets] = useState(0);
-  const [totalLiabilities, setTotalLiabilities] = useState(0);
+  const [assets, setAssets] = useState(0);
+  const [liabilities, setLiabilities] = useState(0);
 
   const calculate = () => {
-    const assets = getData("assets");
-    const liabilities = getData("liabilities");
+    const storedAssets = getData("assets");
+    const storedLiabilities = getData("liabilities");
 
-    const assetSum = assets.reduce(
-      (sum: number, a: any) => sum + Number(a.value || 0),
+    const assetTotal = storedAssets.reduce(
+      (sum: number, a: any) => sum + Number(a.assetValue || 0),
       0
     );
 
-    const liabilitySum = liabilities.reduce(
+    const liabilityTotal = storedLiabilities.reduce(
       (sum: number, l: any) => sum + Number(l.amount || 0),
       0
     );
 
-    setTotalAssets(assetSum);
-    setTotalLiabilities(liabilitySum);
+    setAssets(assetTotal);
+    setLiabilities(liabilityTotal);
   };
 
   useEffect(() => {
-    // Initial load
     calculate();
-
-    // Listen for updates
     window.addEventListener("finance-updated", calculate);
-
-    return () => {
-      window.removeEventListener("finance-updated", calculate);
-    };
+    return () => window.removeEventListener("finance-updated", calculate);
   }, []);
 
-  const netWorth = totalAssets - totalLiabilities;
+  const netWorth = assets - liabilities;
 
   return (
-    <section style={{ background: "#f5f7fa" }}>
+    <section style={{ background: "#f8fafc" }}>
       <h2>📊 Net Worth Summary</h2>
-      <p><strong>Total Assets:</strong> ₹{totalAssets.toLocaleString()}</p>
-      <p><strong>Total Liabilities:</strong> ₹{totalLiabilities.toLocaleString()}</p>
+
+      <p><strong>Total Assets:</strong> ₹{assets.toLocaleString()}</p>
+      <p><strong>Total Liabilities:</strong> ₹{liabilities.toLocaleString()}</p>
+
       <hr />
+
       <p>
         <strong>Net Worth:</strong>{" "}
         <span style={{ color: netWorth >= 0 ? "green" : "red" }}>
