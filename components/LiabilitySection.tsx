@@ -3,97 +3,263 @@
 import { useEffect, useState } from "react";
 import { getData, saveData } from "../utils/storage";
 
+type Liability = {
+  liabilityName: string;
+  commencementDate: Date | null;
+  liabilityValue: string;
+  valueRecordDate: Date | null;
+  liabilityId: string;
+  liabilityIdDescription: string;
+  owner: string;
+  institution: string;
+};
+
+type StoredLiability = Omit<Liability, "commencementDate" | "valueRecordDate"> & {
+  commencementDate: string | null;
+  valueRecordDate: string | null;
+};
+
+const emptyForm: Liability = {
+  liabilityName: "",
+  commencementDate: null,
+  liabilityValue: "",
+  valueRecordDate: null,
+  liabilityId: "",
+  liabilityIdDescription: "",
+  owner: "",
+  institution: ""
+};
+
 export default function LiabilitySection() {
-  const [items, setItems] = useState<any[]>([]);
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-
+  const [liabilities, setLiabilities] = useState<Liability[]>([]);
+  const [form, setForm] = useState<Liability>(emptyForm);
   const [editIndex, setEditIndex] = useState<number | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editAmount, setEditAmount] = useState("");
+  const [editForm, setEditForm] = useState<Liability>(emptyForm);
 
+  // Load liabilities
   useEffect(() => {
-    setItems(getData("liabilities"));
+    const stored: StoredLiability[] = getData("liabilities");
+    setLiabilities(
+      stored.map(l => ({
+        ...l,
+        commencementDate: l.commencementDate ? new Date(l.commencementDate) : null,
+        valueRecordDate: l.valueRecordDate ? new Date(l.valueRecordDate) : null
+      }))
+    );
   }, []);
 
-  const persist = (updated: any[]) => {
-    setItems(updated);
-    saveData("liabilities", updated);
+  // Persist liabilities
+  const persist = (updated: Liability[]) => {
+    const dehydrated: StoredLiability[] = updated.map(l => ({
+      ...l,
+      commencementDate: l.commencementDate?.toISOString() ?? null,
+      valueRecordDate: l.valueRecordDate?.toISOString() ?? null
+    }));
+
+    setLiabilities(updated);
+    saveData("liabilities", dehydrated);
   };
 
-  const addItem = () => {
-    if (!name || !amount) return;
-    persist([...items, { name, amount }]);
-    setName("");
-    setAmount("");
+  const formatDate = (d: Date | null) =>
+    d ? d.toISOString().split("T")[0] : "";
+
+  // Add liability
+  const addLiability = () => {
+    if (!form.liabilityName || !form.liabilityValue) return;
+    persist([...liabilities, form]);
+    setForm(emptyForm);
   };
 
-  const deleteItem = (index: number) => {
-    persist(items.filter((_, i) => i !== index));
-  };
-
-  const startEdit = (index: number) => {
-    setEditIndex(index);
-    setEditName(items[index].name);
-    setEditAmount(items[index].amount);
+  // Edit handlers
+  const startEdit = (i: number) => {
+    setEditIndex(i);
+    setEditForm(liabilities[i]);
   };
 
   const saveEdit = () => {
     if (editIndex === null) return;
-    const updated = [...items];
-    updated[editIndex] = { name: editName, amount: editAmount };
+    const updated = [...liabilities];
+    updated[editIndex] = editForm;
     persist(updated);
     cancelEdit();
   };
 
   const cancelEdit = () => {
     setEditIndex(null);
-    setEditName("");
-    setEditAmount("");
+    setEditForm(emptyForm);
   };
+
+  const deleteLiability = (i: number) =>
+    persist(liabilities.filter((_, idx) => idx !== i));
 
   return (
     <section>
       <h2>📉 Liabilities</h2>
 
-      <input
-        placeholder="Liability Name"
-        value={name}
-        onChange={e => setName(e.target.value)}
-      />
-      <input
-        placeholder="Amount"
-        value={amount}
-        onChange={e => setAmount(e.target.value)}
-      />
-      <button onClick={addItem}>Add</button>
+      {/* Liability Creation Card */}
+      <div className="card">
+        <h3>Add New Liability</h3>
 
-      <ul>
-        {items.map((l, i) => (
-          <li key={i}>
-            {editIndex === i ? (
-              <>
-                <input
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                />
-                <input
-                  value={editAmount}
-                  onChange={e => setEditAmount(e.target.value)}
-                />
-                <button onClick={saveEdit}>Save</button>
-                <button onClick={cancelEdit}>Cancel</button>
-              </>
-            ) : (
-              <>
-                {l.name} – ₹{l.amount}
-                <button onClick={() => startEdit(i)}>Edit</button>
-                <button onClick={() => deleteItem(i)}>Delete</button>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
+        <div className="form-grid">
+          <div>
+            <label>Liability Name</label>
+            <input
+              value={form.liabilityName}
+              onChange={e =>
+                setForm({ ...form, liabilityName: e.target.value })
+              }
+            />
+          </div>
+
+          <div>
+            <label>Date of Commencement</label>
+            <input
+              type="date"
+              value={formatDate(form.commencementDate)}
+              onChange={e =>
+                setForm({
+                  ...form,
+                  commencementDate: e.target.value
+                    ? new Date(e.target.value)
+                    : null
+                })
+              }
+            />
+          </div>
+
+          <div>
+            <label>Liability Value</label>
+            <input
+              value={form.liabilityValue}
+              onChange={e =>
+                setForm({ ...form, liabilityValue: e.target.value })
+              }
+            />
+          </div>
+
+          <div>
+            <label>Date of Value Record</label>
+            <input
+              type="date"
+              value={formatDate(form.valueRecordDate)}
+              onChange={e =>
+                setForm({
+                  ...form,
+                  valueRecordDate: e.target.value
+                    ? new Date(e.target.value)
+                    : null
+                })
+              }
+            />
+          </div>
+
+          <div>
+            <label>Liability ID</label>
+            <input
+              value={form.liabilityId}
+              onChange={e =>
+                setForm({ ...form, liabilityId: e.target.value })
+              }
+            />
+          </div>
+
+          <div>
+            <label>Liability ID Description</label>
+            <input
+              value={form.liabilityIdDescription}
+              onChange={e =>
+                setForm({
+                  ...form,
+                  liabilityIdDescription: e.target.value
+                })
+              }
+            />
+          </div>
+
+          <div>
+            <label>Liability Owner</label>
+            <input
+              value={form.owner}
+              onChange={e => setForm({ ...form, owner: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label>Liability Institution</label>
+            <input
+              value={form.institution}
+              onChange={e =>
+                setForm({ ...form, institution: e.target.value })
+              }
+            />
+          </div>
+        </div>
+
+        <div className="card-actions">
+          <button className="primary" onClick={addLiability}>
+            Add Liability
+          </button>
+        </div>
+      </div>
+
+      {/* Liability Table */}
+      {liabilities.length > 0 && (
+        <div className="table-scroll-wrapper">
+          <table className="data-table wide-table">
+            <thead>
+              <tr>
+                <th>Liability Name</th>
+                <th>Commencement Date</th>
+                <th>Liability Value</th>
+                <th>Value Record Date</th>
+                <th>Liability ID</th>
+                <th>ID Description</th>
+                <th>Owner</th>
+                <th>Institution</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {liabilities.map((l, i) => (
+                <tr key={i}>
+                  {editIndex === i ? (
+                    <>
+                      <td><input value={editForm.liabilityName} onChange={e => setEditForm({ ...editForm, liabilityName: e.target.value })} /></td>
+                      <td><input type="date" value={formatDate(editForm.commencementDate)} onChange={e => setEditForm({ ...editForm, commencementDate: e.target.value ? new Date(e.target.value) : null })} /></td>
+                      <td><input value={editForm.liabilityValue} onChange={e => setEditForm({ ...editForm, liabilityValue: e.target.value })} /></td>
+                      <td><input type="date" value={formatDate(editForm.valueRecordDate)} onChange={e => setEditForm({ ...editForm, valueRecordDate: e.target.value ? new Date(e.target.value) : null })} /></td>
+                      <td><input value={editForm.liabilityId} onChange={e => setEditForm({ ...editForm, liabilityId: e.target.value })} /></td>
+                      <td><input value={editForm.liabilityIdDescription} onChange={e => setEditForm({ ...editForm, liabilityIdDescription: e.target.value })} /></td>
+                      <td><input value={editForm.owner} onChange={e => setEditForm({ ...editForm, owner: e.target.value })} /></td>
+                      <td><input value={editForm.institution} onChange={e => setEditForm({ ...editForm, institution: e.target.value })} /></td>
+                      <td className="actions">
+                        <button onClick={saveEdit}>Save</button>
+                        <button onClick={cancelEdit}>Cancel</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{l.liabilityName}</td>
+                      <td>{formatDate(l.commencementDate)}</td>
+                      <td>₹{Number(l.liabilityValue).toLocaleString()}</td>
+                      <td>{formatDate(l.valueRecordDate)}</td>
+                      <td>{l.liabilityId}</td>
+                      <td>{l.liabilityIdDescription}</td>
+                      <td>{l.owner}</td>
+                      <td>{l.institution}</td>
+                      <td className="actions">
+                        <button onClick={() => startEdit(i)}>Edit</button>
+                        <button className="danger" onClick={() => deleteLiability(i)}>Delete</button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
