@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { getData } from "../utils/storage";
 
 export default function NetWorthSummary() {
-  const [assets, setAssets] = useState(0);
-  const [liabilities, setLiabilities] = useState(0);
+  const [totalAssets, setTotalAssets] = useState(0);
+  const [totalLiabilities, setTotalLiabilities] = useState(0);
 
   const calculate = () => {
     const storedAssets = getData("assets");
@@ -17,12 +17,12 @@ export default function NetWorthSummary() {
     );
 
     const liabilityTotal = storedLiabilities.reduce(
-      (sum: number, l: any) => sum + Number(l.amount || 0),
+      (sum: number, l: any) => sum + Number(l.liabilityValue || 0),
       0
     );
 
-    setAssets(assetTotal);
-    setLiabilities(liabilityTotal);
+    setTotalAssets(assetTotal);
+    setTotalLiabilities(liabilityTotal);
   };
 
   useEffect(() => {
@@ -31,14 +31,21 @@ export default function NetWorthSummary() {
     return () => window.removeEventListener("finance-updated", calculate);
   }, []);
 
-  const netWorth = assets - liabilities;
+  const netWorth = totalAssets - totalLiabilities;
 
   return (
     <section style={{ background: "#f8fafc" }}>
       <h2>📊 Net Worth Summary</h2>
 
-      <p><strong>Total Assets:</strong> ₹{assets.toLocaleString()}</p>
-      <p><strong>Total Liabilities:</strong> ₹{liabilities.toLocaleString()}</p>
+      <p>
+        <strong>Total Assets:</strong>{" "}
+        ₹{totalAssets.toLocaleString()}
+      </p>
+
+      <p>
+        <strong>Total Liabilities:</strong>{" "}
+        ₹{totalLiabilities.toLocaleString()}
+      </p>
 
       <hr />
 
