@@ -50,7 +50,6 @@ export default function AssetSection() {
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Asset>(emptyForm);
 
-  // Load assets
   useEffect(() => {
     const stored: StoredAsset[] = getData("assets");
     setAssets(
@@ -62,7 +61,6 @@ export default function AssetSection() {
     );
   }, []);
 
-  // Persist assets
   const persist = (updated: Asset[]) => {
     const dehydrated: StoredAsset[] = updated.map(a => ({
       ...a,
@@ -76,14 +74,12 @@ export default function AssetSection() {
   const formatDate = (d: Date | null) =>
     d ? d.toISOString().split("T")[0] : "";
 
-  // Add asset
   const addAsset = () => {
     if (!form.assetName || !form.assetValue || !form.category) return;
     persist([...assets, form]);
     setForm(emptyForm);
   };
 
-  // Edit handlers
   const startEdit = (i: number) => {
     setEditIndex(i);
     setEditForm(assets[i]);
@@ -100,21 +96,21 @@ export default function AssetSection() {
   const deleteAsset = (i: number) =>
     persist(assets.filter((_, idx) => idx !== i));
 
-  // ✅ EXPORT (correct scope)
   const exportAssets = () => {
-    const exportData = assets.map(a => ({
-      "Asset Name": a.assetName,
-      "Category": a.category,
-      "Purchase Date": formatDate(a.purchaseDate),
-      "Asset Value": a.assetValue,
-      "Value Record Date": formatDate(a.valueRecordDate),
-      "Asset ID": a.assetId,
-      "Asset ID Description": a.assetIdDescription,
-      "Owner": a.owner,
-      "Institution": a.institution
-    }));
-
-    exportToExcel(exportData, "assets");
+    exportToExcel(
+      assets.map(a => ({
+        "Asset Name": a.assetName,
+        "Category": a.category,
+        "Purchase Date": formatDate(a.purchaseDate),
+        "Asset Value": a.assetValue,
+        "Value Record Date": formatDate(a.valueRecordDate),
+        "Asset ID": a.assetId,
+        "Asset ID Description": a.assetIdDescription,
+        "Owner": a.owner,
+        "Institution": a.institution
+      })),
+      "assets"
+    );
   };
 
   return (
@@ -128,18 +124,12 @@ export default function AssetSection() {
         <div className="form-grid">
           <div>
             <label>Asset Name</label>
-            <input
-              value={form.assetName}
-              onChange={e => setForm({ ...form, assetName: e.target.value })}
-            />
+            <input value={form.assetName} onChange={e => setForm({ ...form, assetName: e.target.value })} />
           </div>
 
           <div>
             <label>Category</label>
-            <select
-              value={form.category}
-              onChange={e => setForm({ ...form, category: e.target.value })}
-            >
+            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
               <option value="">Select Category</option>
               {ASSET_CATEGORIES.map(c => (
                 <option key={c} value={c}>{c}</option>
@@ -149,80 +139,57 @@ export default function AssetSection() {
 
           <div>
             <label>Purchase Date</label>
-            <input
-              type="date"
-              value={formatDate(form.purchaseDate)}
-              onChange={e =>
-                setForm({
-                  ...form,
-                  purchaseDate: e.target.value ? new Date(e.target.value) : null
-                })
-              }
-            />
+            <input type="date" value={formatDate(form.purchaseDate)} onChange={e => setForm({ ...form, purchaseDate: e.target.value ? new Date(e.target.value) : null })} />
           </div>
 
           <div>
             <label>Asset Value</label>
-            <input
-              value={form.assetValue}
-              onChange={e => setForm({ ...form, assetValue: e.target.value })}
-            />
+            <input value={form.assetValue} onChange={e => setForm({ ...form, assetValue: e.target.value })} />
           </div>
 
           <div>
             <label>Value Record Date</label>
-            <input
-              type="date"
-              value={formatDate(form.valueRecordDate)}
-              onChange={e =>
-                setForm({
-                  ...form,
-                  valueRecordDate: e.target.value ? new Date(e.target.value) : null
-                })
-              }
-            />
+            <input type="date" value={formatDate(form.valueRecordDate)} onChange={e => setForm({ ...form, valueRecordDate: e.target.value ? new Date(e.target.value) : null })} />
           </div>
 
           <div>
             <label>Asset ID</label>
-            <input
-              value={form.assetId}
-              onChange={e => setForm({ ...form, assetId: e.target.value })}
-            />
+            <input value={form.assetId} onChange={e => setForm({ ...form, assetId: e.target.value })} />
           </div>
 
           <div>
             <label>Asset ID Description</label>
-            <input
-              value={form.assetIdDescription}
-              onChange={e =>
-                setForm({ ...form, assetIdDescription: e.target.value })
-              }
-            />
+            <input value={form.assetIdDescription} onChange={e => setForm({ ...form, assetIdDescription: e.target.value })} />
           </div>
 
           <div>
             <label>Owner</label>
-            <input
-              value={form.owner}
-              onChange={e => setForm({ ...form, owner: e.target.value })}
-            />
+            <input value={form.owner} onChange={e => setForm({ ...form, owner: e.target.value })} />
           </div>
 
           <div>
             <label>Institution</label>
-            <input
-              value={form.institution}
-              onChange={e => setForm({ ...form, institution: e.target.value })}
-            />
+            <input value={form.institution} onChange={e => setForm({ ...form, institution: e.target.value })} />
           </div>
         </div>
 
         <div className="card-actions">
           <button className="primary" onClick={addAsset}>Add Asset</button>
-          <button onClick={exportAssets}>Export Assets to Excel</button>
         </div>
       </div>
+
+      {/* TABLE TOOLBAR */}
+      {assets.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            margin: "12px 0"
+          }}
+        >
+          <button onClick={exportAssets}>Export Assets to Excel</button>
+        </div>
+      )}
 
       {/* ASSET TABLE */}
       {assets.length > 0 && (
