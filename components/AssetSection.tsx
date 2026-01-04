@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getData, saveData } from "../utils/storage";
+import { exportToExcel } from "../utils/exportToExcel";
 
 const ASSET_CATEGORIES = [
   "Cash & Cash Equivalents",
@@ -13,6 +14,22 @@ const ASSET_CATEGORIES = [
   "Insurance-linked",
   "Other"
 ];
+
+const exportAssets = () => {
+  const exportData = assets.map(a => ({
+    "Asset Name": a.assetName,
+    "Category": a.category,
+    "Purchase Date": formatDate(a.purchaseDate),
+    "Asset Value": a.assetValue,
+    "Value Record Date": formatDate(a.valueRecordDate),
+    "Asset ID": a.assetId,
+    "Asset ID Description": a.assetIdDescription,
+    "Owner": a.owner,
+    "Institution": a.institution
+  }));
+
+  exportToExcel(exportData, "assets");
+};
 
 type Asset = {
   assetName: string;
@@ -164,6 +181,10 @@ export default function AssetSection() {
         </div>
       </div>
 
+<div style={{ marginBottom: 12 }}>
+  <button onClick={exportAssets}>Export Assets to Excel</button>
+</div>
+      
       {/* ASSET TABLE */}
       {assets.length > 0 && (
         <div className="table-scroll-wrapper">
