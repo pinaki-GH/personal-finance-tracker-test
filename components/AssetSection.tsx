@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getData, saveData } from "../utils/storage";
 import { exportToExcel } from "../utils/exportToExcel";
 
@@ -49,6 +49,7 @@ export default function AssetSection() {
   const [form, setForm] = useState<Asset>(emptyForm);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Asset>(emptyForm);
+  const [ownerFilter, setOwnerFilter] = useState<string>("All");
 
   useEffect(() => {
     const stored: StoredAsset[] = getData("assets");
@@ -74,15 +75,30 @@ export default function AssetSection() {
   const formatDate = (d: Date | null) =>
     d ? d.toISOString().split("T")[0] : "";
 
+  // Unique owner list for dropdown
+  const uniqueOwners = useMemo(() => {
+    const owners = assets
+      .map(a => a.owner)
+      .filter(o => o && o.trim() !== "");
+    return ["All", ...Array.from(new Set(owners))];
+  }, [assets]);
+
+  // Filtered assets
+  const filteredAssets = useMemo(() => {
+    if (ownerFilter === "All") return assets;
+    return assets.filter(a => a.owner === ownerFilter);
+  }, [assets, ownerFilter]);
+
   const addAsset = () => {
     if (!form.assetName || !form.assetValue || !form.category) return;
     persist([...assets, form]);
     setForm(emptyForm);
   };
 
-  const startEdit = (i: number) => {
-    setEditIndex(i);
-    setEditForm(assets[i]);
+  const startEdit = (filteredIndex: number) => {
+    const originalIndex = assets.indexOf(filteredAssets[filteredIndex]);
+    setEditIndex(originalIndex);
+    setEditForm(assets[originalIndex]);
   };
 
   const saveEdit = () => {
@@ -93,12 +109,14 @@ export default function AssetSection() {
     setEditIndex(null);
   };
 
-  const deleteAsset = (i: number) =>
-    persist(assets.filter((_, idx) => idx !== i));
+  const deleteAsset = (filteredIndex: number) => {
+    const originalIndex = assets.indexOf(filteredAssets[filteredIndex]);
+    persist(assets.filter((_, idx) => idx !== originalIndex));
+  };
 
   const exportAssets = () => {
     exportToExcel(
-      assets.map(a => ({
+      filteredAssets.map(a => ({
         "Asset Name": a.assetName,
         "Category": a.category,
         "Purchase Date": formatDate(a.purchaseDate),
@@ -178,21 +196,36 @@ export default function AssetSection() {
         </div>
       </div>
 
-      {/* TABLE TOOLBAR */}
+      {/* FILTER + EXPORT BAR */}
       {assets.length > 0 && (
         <div
           style={{
             display: "flex",
-            justifyContent: "flex-end",
+            justifyContent: "space-between",
+            alignItems: "center",
             margin: "12px 0"
           }}
         >
-          <button onClick={exportAssets}>Export Assets to Excel</button>
+          <div>
+            <label style={{ marginRight: 8 }}>Filter by Owner:</label>
+            <select
+              value={ownerFilter}
+              onChange={e => setOwnerFilter(e.target.value)}
+            >
+              {uniqueOwners.map(owner => (
+                <option key={owner} value={owner}>{owner}</option>
+              ))}
+            </select>
+          </div>
+
+          <button onClick={exportAssets}>
+            Export Assets to Excel
+          </button>
         </div>
       )}
 
       {/* ASSET TABLE */}
-      {assets.length > 0 && (
+      {filteredAssets.length > 0 && (
         <div className="table-scroll-wrapper">
           <table className="data-table wide-table">
             <thead>
@@ -211,47 +244,21 @@ export default function AssetSection() {
             </thead>
 
             <tbody>
-              {assets.map((a, i) => (
+              {filteredAssets.map((a, i) => (
                 <tr key={i}>
-                  {editIndex === i ? (
-                    <>
-                      <td><input value={editForm.assetName} onChange={e => setEditForm({ ...editForm, assetName: e.target.value })} /></td>
-                      <td>
-                        <select value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
-                          {ASSET_CATEGORIES.map(c => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td><input type="date" value={formatDate(editForm.purchaseDate)} onChange={e => setEditForm({ ...editForm, purchaseDate: e.target.value ? new Date(e.target.value) : null })} /></td>
-                      <td><input value={editForm.assetValue} onChange={e => setEditForm({ ...editForm, assetValue: e.target.value })} /></td>
-                      <td><input type="date" value={formatDate(editForm.valueRecordDate)} onChange={e => setEditForm({ ...editForm, valueRecordDate: e.target.value ? new Date(e.target.value) : null })} /></td>
-                      <td><input value={editForm.assetId} onChange={e => setEditForm({ ...editForm, assetId: e.target.value })} /></td>
-                      <td><input value={editForm.assetIdDescription} onChange={e => setEditForm({ ...editForm, assetIdDescription: e.target.value })} /></td>
-                      <td><input value={editForm.owner} onChange={e => setEditForm({ ...editForm, owner: e.target.value })} /></td>
-                      <td><input value={editForm.institution} onChange={e => setEditForm({ ...editForm, institution: e.target.value })} /></td>
-                      <td className="actions">
-                        <button onClick={saveEdit}>Save</button>
-                        <button onClick={() => setEditIndex(null)}>Cancel</button>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td>{a.assetName}</td>
-                      <td>{a.category}</td>
-                      <td>{formatDate(a.purchaseDate)}</td>
-                      <td>₹{Number(a.assetValue).toLocaleString()}</td>
-                      <td>{formatDate(a.valueRecordDate)}</td>
-                      <td>{a.assetId}</td>
-                      <td>{a.assetIdDescription}</td>
-                      <td>{a.owner}</td>
-                      <td>{a.institution}</td>
-                      <td className="actions">
-                        <button onClick={() => startEdit(i)}>Edit</button>
-                        <button className="danger" onClick={() => deleteAsset(i)}>Delete</button>
-                      </td>
-                    </>
-                  )}
+                  <td>{a.assetName}</td>
+                  <td>{a.category}</td>
+                  <td>{formatDate(a.purchaseDate)}</td>
+                  <td>₹{Number(a.assetValue).toLocaleString()}</td>
+                  <td>{formatDate(a.valueRecordDate)}</td>
+                  <td>{a.assetId}</td>
+                  <td>{a.assetIdDescription}</td>
+                  <td>{a.owner}</td>
+                  <td>{a.institution}</td>
+                  <td className="actions">
+                    <button onClick={() => startEdit(i)}>Edit</button>
+                    <button className="danger" onClick={() => deleteAsset(i)}>Delete</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
