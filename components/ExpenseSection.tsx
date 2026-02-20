@@ -360,6 +360,146 @@ export default function ExpenseSection() {
                 </div>
               );
             })}
+
+            {/* EXPENSE TABLE */}
+{filteredExpenses.length > 0 && (
+  <div className="table-scroll-wrapper">
+    <table className="data-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Category</th>
+          <th>Owner</th>
+          <th>Date</th>
+          <th>Recurring</th>
+          <th>Amount</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filteredExpenses.map((e, i) => {
+          const originalIndex = expenses.indexOf(e);
+          const isEditing = editIndex === originalIndex;
+
+          return (
+            <tr key={i}>
+              {isEditing ? (
+                <>
+                  <td>
+                    <input
+                      value={editForm.description}
+                      onChange={ev =>
+                        setEditForm({
+                          ...editForm,
+                          description: ev.target.value
+                        })
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <select
+                      value={editForm.category}
+                      onChange={ev =>
+                        setEditForm({
+                          ...editForm,
+                          category: ev.target.value
+                        })
+                      }
+                    >
+                      {EXPENSE_CATEGORIES.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td>
+                    <input
+                      value={editForm.owner}
+                      onChange={ev =>
+                        setEditForm({
+                          ...editForm,
+                          owner: ev.target.value
+                        })
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <input
+                      type="date"
+                      value={formatDate(editForm.expenseDate)}
+                      onChange={ev =>
+                        setEditForm({
+                          ...editForm,
+                          expenseDate: ev.target.value
+                            ? new Date(ev.target.value)
+                            : null
+                        })
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <select
+                      value={editForm.recurring}
+                      onChange={ev =>
+                        setEditForm({
+                          ...editForm,
+                          recurring: ev.target.value as RecurringType
+                        })
+                      }
+                    >
+                      <option value="None">No Recurring</option>
+                      <option value="Monthly">Monthly</option>
+                    </select>
+                  </td>
+
+                  <td>
+                    <input
+                      value={editForm.amount}
+                      onChange={ev =>
+                        setEditForm({
+                          ...editForm,
+                          amount: ev.target.value
+                        })
+                      }
+                    />
+                  </td>
+
+                  <td>
+                    <button onClick={saveEdit}>Save</button>
+                    <button onClick={() => setEditIndex(null)}>
+                      Cancel
+                    </button>
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td>{e.description}</td>
+                  <td>{e.category}</td>
+                  <td>{e.owner}</td>
+                  <td>{formatDate(e.expenseDate)}</td>
+                  <td>{e.recurring}</td>
+                  <td>₹{Number(e.amount).toLocaleString()}</td>
+                  <td>
+                    <button onClick={() => startEdit(i)}>Edit</button>
+                    <button
+                      className="danger"
+                      onClick={() => deleteExpense(i)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </>
+              )}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+)}
           </div>
         </>
       )}
