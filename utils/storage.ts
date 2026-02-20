@@ -1,11 +1,12 @@
-export const getData = (key: string) => {
-  if (typeof window === "undefined") return [];
-  return JSON.parse(localStorage.getItem(key) || "[]");
+export const getData = <T = any>(key: string): T => {
+  if (typeof window === "undefined") return null as T;
+
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : null;
 };
 
-export const saveData = (key: string, data: any[]) => {
-  localStorage.setItem(key, JSON.stringify(data));
+export const saveData = <T = any>(key: string, data: T): void => {
+  if (typeof window === "undefined") return;
 
-  // 🔔 Notify listeners that finance data changed
-  window.dispatchEvent(new Event("finance-updated"));
+  localStorage.setItem(key, JSON.stringify(data));
 };
