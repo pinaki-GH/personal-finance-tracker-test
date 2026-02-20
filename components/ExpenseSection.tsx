@@ -28,7 +28,7 @@ const EXPENSE_CATEGORIES = [
   "Miscellaneous"
 ];
 
-type RecurringType = "None" | "Monthly" | "Yearly";
+type RecurringType = "None" | "Monthly";
 
 type Expense = {
   description: string;
@@ -57,12 +57,18 @@ export default function ExpenseSection() {
   const [form, setForm] = useState<Expense>(emptyForm);
   const [monthFilter, setMonthFilter] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"list" | "chart">("list");
+
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Expense>(emptyForm);
+
   const [budgets, setBudgets] = useState<Record<string, number>>({});
 
+  // ================= LOAD =================
   useEffect(() => {
-    const stored: StoredExpense[] = getData("expenses");
+    const stored: StoredExpense[] = getData("expenses") || [];
     const hydrated = stored.map(e => ({
       ...e,
+      recurring: e.recurring ?? "None",
       expenseDate: e.expenseDate ? new Date(e.expenseDate) : null
     }));
     setExpenses(hydrated);
@@ -76,10 +82,11 @@ export default function ExpenseSection() {
       setMonthFilter(months[months.length - 1]);
     }
 
-    const savedBudgets = getData("expenseBudgets");
-    setBudgets(savedBudgets || {});
+    const savedBudgets = getData("expenseBudgets") || {};
+    setBudgets(savedBudgets);
   }, []);
 
+  // ================= PERSIST =================
   const persist = (updated: Expense[]) => {
     const dehydrated: StoredExpense[] = updated.map(e => ({
       ...e,
@@ -100,12 +107,34 @@ export default function ExpenseSection() {
   const getMonthKey = (d: Date | null) =>
     d ? d.toISOString().slice(0, 7) : "";
 
+  // ================= ADD =================
   const addExpense = () => {
     if (!form.description || !form.amount || !form.category) return;
     persist([...expenses, form]);
     setForm({ ...emptyForm, expenseDate: new Date() });
   };
 
+  // ================= EDIT =================
+  const startEdit = (filteredIndex: number) => {
+    const originalIndex = expenses.indexOf(filteredExpenses[filteredIndex]);
+    setEditIndex(originalIndex);
+    setEditForm(expenses[originalIndex]);
+  };
+
+  const saveEdit = () => {
+    if (editIndex === null) return;
+    const updated = [...expenses];
+    updated[editIndex] = editForm;
+    persist(updated);
+    setEditIndex(null);
+  };
+
+  const deleteExpense = (filteredIndex: number) => {
+    const originalIndex = expenses.indexOf(filteredExpenses[filteredIndex]);
+    persist(expenses.filter((_, idx) => idx !== originalIndex));
+  };
+
+  // ================= FILTER =================
   const availableMonths = useMemo(() => {
     const months = expenses.map(e => getMonthKey(e.expenseDate));
     return Array.from(new Set(months.filter(Boolean))).sort();
@@ -121,8 +150,52 @@ export default function ExpenseSection() {
     0
   );
 
-  // ===== BUDGET VS ACTUAL =====
+  const previousMonthTotal = useMemo(() => {
+    if (!monthFilter) return 0;
+    const [year, month] = monthFilter.split("-").map(Number);
+    const prev = new Date(year, month - 2);
+    const prevKey = prev.toISOString().slice(0, 7);
+    return expenses
+      .filter(e => getMonthKey(e.expenseDate) === prevKey)
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  }, [monthFilter, expenses]);
 
+  const percentChange =
+    previousMonthTotal === 0
+      ? 0
+      : ((totalFilteredAmount - previousMonthTotal) /
+          previousMonthTotal) *
+        100;
+
+  // ================= RECURRING (SAFE) =================
+  useEffect(() => {
+    if (!monthFilter) return;
+
+    const newExpenses = [...expenses];
+    let changed = false;
+
+    expenses.forEach(e => {
+      if (e.recurring === "Monthly") {
+        const exists = expenses.some(
+          ex =>
+            ex.description === e.description &&
+            getMonthKey(ex.expenseDate) === monthFilter
+        );
+
+        if (!exists) {
+          newExpenses.push({
+            ...e,
+            expenseDate: new Date(monthFilter + "-01")
+          });
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) persist(newExpenses);
+  }, [monthFilter]);
+
+  // ================= CATEGORY DATA =================
   const categoryActuals = useMemo(() => {
     const map: Record<string, number> = {};
     filteredExpenses.forEach(e => {
@@ -131,44 +204,9 @@ export default function ExpenseSection() {
     return map;
   }, [filteredExpenses]);
 
-  // ===== RECURRING LOGIC =====
-  useEffect(() => {
-    if (!monthFilter) return;
-
-    const newExpenses = [...expenses];
-    const currentMonth = monthFilter;
-
-    expenses.forEach(e => {
-      if (e.recurring === "Monthly") {
-        const key = getMonthKey(e.expenseDate);
-        if (key !== currentMonth) {
-          const exists = expenses.some(
-            ex =>
-              ex.description === e.description &&
-              getMonthKey(ex.expenseDate) === currentMonth
-          );
-          if (!exists) {
-            newExpenses.push({
-              ...e,
-              expenseDate: new Date(currentMonth + "-01")
-            });
-          }
-        }
-      }
-    });
-
-    persist(newExpenses);
-  }, [monthFilter]);
-
-  // ===== PIE CHART =====
-
   const categoryData = {
     labels: Object.keys(categoryActuals),
-    datasets: [
-      {
-        data: Object.values(categoryActuals)
-      }
-    ]
+    datasets: [{ data: Object.values(categoryActuals) }]
   };
 
   return (
@@ -183,7 +221,6 @@ export default function ExpenseSection() {
         >
           Expense List
         </button>
-
         <button
           style={{ marginLeft: 8 }}
           className={activeTab === "chart" ? "primary" : ""}
@@ -213,6 +250,13 @@ export default function ExpenseSection() {
         <div className="card" style={{ marginBottom: 20 }}>
           <h3>Monthly Summary ({monthFilter})</h3>
           <p>Total: ₹{totalFilteredAmount.toLocaleString()}</p>
+          <p>Previous Month: ₹{previousMonthTotal.toLocaleString()}</p>
+          <p>
+            Change:{" "}
+            <strong style={{ color: percentChange >= 0 ? "red" : "green" }}>
+              {percentChange.toFixed(1)}%
+            </strong>
+          </p>
         </div>
       )}
 
@@ -221,7 +265,6 @@ export default function ExpenseSection() {
         <>
           <div className="card">
             <h3>Add Expense</h3>
-
             <div className="form-grid">
               <input
                 placeholder="Description"
@@ -230,7 +273,6 @@ export default function ExpenseSection() {
                   setForm({ ...form, description: e.target.value })
                 }
               />
-
               <input
                 placeholder="Amount"
                 value={form.amount}
@@ -238,7 +280,6 @@ export default function ExpenseSection() {
                   setForm({ ...form, amount: e.target.value })
                 }
               />
-
               <select
                 value={form.category}
                 onChange={e =>
@@ -250,7 +291,6 @@ export default function ExpenseSection() {
                   <option key={c}>{c}</option>
                 ))}
               </select>
-
               <input
                 placeholder="Owner"
                 value={form.owner}
@@ -258,7 +298,6 @@ export default function ExpenseSection() {
                   setForm({ ...form, owner: e.target.value })
                 }
               />
-
               <input
                 type="date"
                 value={formatDate(form.expenseDate)}
@@ -271,7 +310,6 @@ export default function ExpenseSection() {
                   })
                 }
               />
-
               <select
                 value={form.recurring}
                 onChange={e =>
@@ -283,10 +321,8 @@ export default function ExpenseSection() {
               >
                 <option value="None">No Recurring</option>
                 <option value="Monthly">Monthly</option>
-                <option value="Yearly">Yearly</option>
               </select>
             </div>
-
             <div className="card-actions">
               <button className="primary" onClick={addExpense}>
                 Add Expense
@@ -314,15 +350,11 @@ export default function ExpenseSection() {
                         [cat]: Number(e.target.value)
                       })
                     }
-                    style={{ width: 100, marginLeft: 4 }}
+                    style={{ width: 100, marginLeft: 6 }}
                   />
                   {" | "}Actual: ₹{actual.toLocaleString()}
                   {" | "}
-                  <span
-                    style={{
-                      color: variance > 0 ? "red" : "green"
-                    }}
-                  >
+                  <span style={{ color: variance > 0 ? "red" : "green" }}>
                     Variance: ₹{variance.toLocaleString()}
                   </span>
                 </div>
@@ -333,7 +365,7 @@ export default function ExpenseSection() {
       )}
 
       {/* CHART TAB */}
-      {activeTab === "chart" && (
+      {activeTab === "chart" && filteredExpenses.length > 0 && (
         <div className="card">
           <h3>Category Breakdown ({monthFilter})</h3>
           <Pie data={categoryData} />
