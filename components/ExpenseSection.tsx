@@ -43,6 +43,8 @@ type StoredExpense = Omit<Expense, "expenseDate"> & {
   expenseDate: string | null;
 };
 
+type BudgetStore = Record<string, Record<string, number>>;
+
 const emptyForm: Expense = {
   description: "",
   amount: "",
@@ -56,21 +58,23 @@ export default function ExpenseSection() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [form, setForm] = useState<Expense>(emptyForm);
   const [monthFilter, setMonthFilter] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"list" | "chart">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "chart" | "budget">("list");
 
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Expense>(emptyForm);
 
-  const [budgets, setBudgets] = useState<Record<string, number>>({});
+  const [budgets, setBudgets] = useState<BudgetStore>({});
 
   // ================= LOAD =================
   useEffect(() => {
     const stored: StoredExpense[] = getData("expenses") || [];
+
     const hydrated = stored.map(e => ({
       ...e,
       recurring: e.recurring ?? "None",
       expenseDate: e.expenseDate ? new Date(e.expenseDate) : null
     }));
+
     setExpenses(hydrated);
 
     const months = hydrated
@@ -92,11 +96,12 @@ export default function ExpenseSection() {
       ...e,
       expenseDate: e.expenseDate?.toISOString() ?? null
     }));
+
     setExpenses(updated);
     saveData("expenses", dehydrated);
   };
 
-  const saveBudgets = (updated: Record<string, number>) => {
+  const saveBudgets = (updated: BudgetStore) => {
     setBudgets(updated);
     saveData("expenseBudgets", updated);
   };
@@ -155,6 +160,7 @@ export default function ExpenseSection() {
     const [year, month] = monthFilter.split("-").map(Number);
     const prev = new Date(year, month - 2);
     const prevKey = prev.toISOString().slice(0, 7);
+
     return expenses
       .filter(e => getMonthKey(e.expenseDate) === prevKey)
       .reduce((sum, e) => sum + Number(e.amount), 0);
@@ -167,7 +173,7 @@ export default function ExpenseSection() {
           previousMonthTotal) *
         100;
 
-  // ================= RECURRING (SAFE) =================
+  // ================= RECURRING =================
   useEffect(() => {
     if (!monthFilter) return;
 
@@ -209,6 +215,8 @@ export default function ExpenseSection() {
     datasets: [{ data: Object.values(categoryActuals) }]
   };
 
+  const monthBudgets = budgets[monthFilter] || {};
+
   return (
     <section>
       <h2>💸 Expenses</h2>
@@ -221,12 +229,21 @@ export default function ExpenseSection() {
         >
           Expense List
         </button>
+
         <button
           style={{ marginLeft: 8 }}
           className={activeTab === "chart" ? "primary" : ""}
           onClick={() => setActiveTab("chart")}
         >
           Category Breakdown
+        </button>
+
+        <button
+          style={{ marginLeft: 8 }}
+          className={activeTab === "budget" ? "primary" : ""}
+          onClick={() => setActiveTab("budget")}
+        >
+          Budget vs Actual
         </button>
       </div>
 
@@ -323,6 +340,7 @@ export default function ExpenseSection() {
                 <option value="Monthly">Monthly</option>
               </select>
             </div>
+
             <div className="card-actions">
               <button className="primary" onClick={addExpense}>
                 Add Expense
@@ -330,178 +348,178 @@ export default function ExpenseSection() {
             </div>
           </div>
 
-          {/* Budget vs Actual */}
-          <div className="card">
-            <h3>Budget vs Actual</h3>
-            {Object.keys(categoryActuals).map(cat => {
-              const actual = categoryActuals[cat];
-              const budget = budgets[cat] || 0;
-              const variance = actual - budget;
+          {/* Expense Table */}
+          {filteredExpenses.length > 0 && (
+            <div className="table-scroll-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Owner</th>
+                    <th>Date</th>
+                    <th>Recurring</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredExpenses.map((e, i) => {
+                    const originalIndex = expenses.indexOf(e);
+                    const isEditing = editIndex === originalIndex;
 
-              return (
-                <div key={cat} style={{ marginBottom: 8 }}>
-                  <strong>{cat}</strong> — Budget: ₹
-                  <input
-                    type="number"
-                    value={budget}
-                    onChange={e =>
-                      saveBudgets({
-                        ...budgets,
-                        [cat]: Number(e.target.value)
-                      })
-                    }
-                    style={{ width: 100, marginLeft: 6 }}
-                  />
-                  {" | "}Actual: ₹{actual.toLocaleString()}
-                  {" | "}
-                  <span style={{ color: variance > 0 ? "red" : "green" }}>
-                    Variance: ₹{variance.toLocaleString()}
-                  </span>
-                </div>
-              );
-            })}
-
-            {/* EXPENSE TABLE */}
-{filteredExpenses.length > 0 && (
-  <div className="table-scroll-wrapper">
-    <table className="data-table">
-      <thead>
-        <tr>
-          <th>Description</th>
-          <th>Category</th>
-          <th>Owner</th>
-          <th>Date</th>
-          <th>Recurring</th>
-          <th>Amount</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {filteredExpenses.map((e, i) => {
-          const originalIndex = expenses.indexOf(e);
-          const isEditing = editIndex === originalIndex;
-
-          return (
-            <tr key={i}>
-              {isEditing ? (
-                <>
-                  <td>
-                    <input
-                      value={editForm.description}
-                      onChange={ev =>
-                        setEditForm({
-                          ...editForm,
-                          description: ev.target.value
-                        })
-                      }
-                    />
-                  </td>
-
-                  <td>
-                    <select
-                      value={editForm.category}
-                      onChange={ev =>
-                        setEditForm({
-                          ...editForm,
-                          category: ev.target.value
-                        })
-                      }
-                    >
-                      {EXPENSE_CATEGORIES.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </td>
-
-                  <td>
-                    <input
-                      value={editForm.owner}
-                      onChange={ev =>
-                        setEditForm({
-                          ...editForm,
-                          owner: ev.target.value
-                        })
-                      }
-                    />
-                  </td>
-
-                  <td>
-                    <input
-                      type="date"
-                      value={formatDate(editForm.expenseDate)}
-                      onChange={ev =>
-                        setEditForm({
-                          ...editForm,
-                          expenseDate: ev.target.value
-                            ? new Date(ev.target.value)
-                            : null
-                        })
-                      }
-                    />
-                  </td>
-
-                  <td>
-                    <select
-                      value={editForm.recurring}
-                      onChange={ev =>
-                        setEditForm({
-                          ...editForm,
-                          recurring: ev.target.value as RecurringType
-                        })
-                      }
-                    >
-                      <option value="None">No Recurring</option>
-                      <option value="Monthly">Monthly</option>
-                    </select>
-                  </td>
-
-                  <td>
-                    <input
-                      value={editForm.amount}
-                      onChange={ev =>
-                        setEditForm({
-                          ...editForm,
-                          amount: ev.target.value
-                        })
-                      }
-                    />
-                  </td>
-
-                  <td>
-                    <button onClick={saveEdit}>Save</button>
-                    <button onClick={() => setEditIndex(null)}>
-                      Cancel
-                    </button>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td>{e.description}</td>
-                  <td>{e.category}</td>
-                  <td>{e.owner}</td>
-                  <td>{formatDate(e.expenseDate)}</td>
-                  <td>{e.recurring}</td>
-                  <td>₹{Number(e.amount).toLocaleString()}</td>
-                  <td>
-                    <button onClick={() => startEdit(i)}>Edit</button>
-                    <button
-                      className="danger"
-                      onClick={() => deleteExpense(i)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </>
-              )}
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-)}
-          </div>
+                    return (
+                      <tr key={i}>
+                        {isEditing ? (
+                          <>
+                            <td>
+                              <input
+                                value={editForm.description}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    description: ev.target.value
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <select
+                                value={editForm.category}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    category: ev.target.value
+                                  })
+                                }
+                              >
+                                {EXPENSE_CATEGORIES.map(c => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                value={editForm.owner}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    owner: ev.target.value
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="date"
+                                value={formatDate(editForm.expenseDate)}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    expenseDate: ev.target.value
+                                      ? new Date(ev.target.value)
+                                      : null
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <select
+                                value={editForm.recurring}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    recurring: ev.target.value as RecurringType
+                                  })
+                                }
+                              >
+                                <option value="None">No Recurring</option>
+                                <option value="Monthly">Monthly</option>
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                value={editForm.amount}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    amount: ev.target.value
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <button onClick={saveEdit}>Save</button>
+                              <button onClick={() => setEditIndex(null)}>
+                                Cancel
+                              </button>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td>{e.description}</td>
+                            <td>{e.category}</td>
+                            <td>{e.owner}</td>
+                            <td>{formatDate(e.expenseDate)}</td>
+                            <td>{e.recurring}</td>
+                            <td>₹{Number(e.amount).toLocaleString()}</td>
+                            <td>
+                              <button onClick={() => startEdit(i)}>Edit</button>
+                              <button
+                                className="danger"
+                                onClick={() => deleteExpense(i)}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
+      )}
+
+      {/* BUDGET TAB */}
+      {activeTab === "budget" && monthFilter && (
+        <div className="card">
+          <h3>Budget vs Actual ({monthFilter})</h3>
+
+          {EXPENSE_CATEGORIES.map(cat => {
+            const actual = categoryActuals[cat] || 0;
+            const budget = monthBudgets[cat] || 0;
+            const variance = actual - budget;
+
+            return (
+              <div key={cat} style={{ marginBottom: 10 }}>
+                <strong>{cat}</strong> — Budget: ₹
+                <input
+                  type="number"
+                  value={budget}
+                  onChange={e =>
+                    saveBudgets({
+                      ...budgets,
+                      [monthFilter]: {
+                        ...monthBudgets,
+                        [cat]: Number(e.target.value)
+                      }
+                    })
+                  }
+                  style={{ width: 100, marginLeft: 6 }}
+                />
+                {" | "}Actual: ₹{actual.toLocaleString()}
+                {" | "}
+                <span style={{ color: variance > 0 ? "red" : "green" }}>
+                  Variance: ₹{variance.toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* CHART TAB */}
