@@ -54,6 +54,9 @@ export default function ExpenseSection() {
   const [monthFilter, setMonthFilter] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"list" | "chart">("list");
 
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Expense>(emptyForm);
+
   useEffect(() => {
     const stored: StoredExpense[] = getData("expenses");
     const hydrated = stored.map(e => ({
@@ -62,7 +65,6 @@ export default function ExpenseSection() {
     }));
     setExpenses(hydrated);
 
-    // Default to latest month
     const months = hydrated
       .map(e => e.expenseDate?.toISOString().slice(0, 7))
       .filter(Boolean)
@@ -94,8 +96,24 @@ export default function ExpenseSection() {
     setForm({ ...emptyForm, expenseDate: new Date() });
   };
 
-  const deleteExpense = (i: number) =>
-    persist(expenses.filter((_, idx) => idx !== i));
+  const startEdit = (filteredIndex: number) => {
+    const originalIndex = expenses.indexOf(filteredExpenses[filteredIndex]);
+    setEditIndex(originalIndex);
+    setEditForm(expenses[originalIndex]);
+  };
+
+  const saveEdit = () => {
+    if (editIndex === null) return;
+    const updated = [...expenses];
+    updated[editIndex] = editForm;
+    persist(updated);
+    setEditIndex(null);
+  };
+
+  const deleteExpense = (filteredIndex: number) => {
+    const originalIndex = expenses.indexOf(filteredExpenses[filteredIndex]);
+    persist(expenses.filter((_, idx) => idx !== originalIndex));
+  };
 
   const availableMonths = useMemo(() => {
     const months = expenses.map(e => getMonthKey(e.expenseDate));
@@ -137,11 +155,7 @@ export default function ExpenseSection() {
 
     return {
       labels: Object.keys(map),
-      datasets: [
-        {
-          data: Object.values(map)
-        }
-      ]
+      datasets: [{ data: Object.values(map) }]
     };
   }, [filteredExpenses]);
 
@@ -157,7 +171,6 @@ export default function ExpenseSection() {
         >
           Expense List
         </button>
-
         <button
           style={{ marginLeft: 8 }}
           className={activeTab === "chart" ? "primary" : ""}
@@ -182,7 +195,7 @@ export default function ExpenseSection() {
         </div>
       )}
 
-      {/* MONTHLY SUMMARY */}
+      {/* Monthly Summary */}
       {monthFilter && (
         <div className="card" style={{ marginBottom: 20 }}>
           <h3>Monthly Summary ({monthFilter})</h3>
@@ -190,11 +203,7 @@ export default function ExpenseSection() {
           <p>Previous Month: ₹{previousMonthTotal.toLocaleString()}</p>
           <p>
             Change:{" "}
-            <strong
-              style={{
-                color: percentChange >= 0 ? "red" : "green"
-              }}
-            >
+            <strong style={{ color: percentChange >= 0 ? "red" : "green" }}>
               {percentChange.toFixed(1)}%
             </strong>
           </p>
@@ -206,7 +215,6 @@ export default function ExpenseSection() {
         <>
           <div className="card">
             <h3>Add Expense</h3>
-
             <div className="form-grid">
               <div>
                 <label>Description</label>
@@ -217,7 +225,6 @@ export default function ExpenseSection() {
                   }
                 />
               </div>
-
               <div>
                 <label>Amount</label>
                 <input
@@ -227,7 +234,6 @@ export default function ExpenseSection() {
                   }
                 />
               </div>
-
               <div>
                 <label>Category</label>
                 <select
@@ -242,7 +248,6 @@ export default function ExpenseSection() {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label>Owner</label>
                 <input
@@ -252,7 +257,6 @@ export default function ExpenseSection() {
                   }
                 />
               </div>
-
               <div>
                 <label>Expense Date</label>
                 <input
@@ -269,7 +273,6 @@ export default function ExpenseSection() {
                 />
               </div>
             </div>
-
             <div className="card-actions">
               <button className="primary" onClick={addExpense}>
                 Add Expense
@@ -290,27 +293,107 @@ export default function ExpenseSection() {
                     <th>Actions</th>
                   </tr>
                 </thead>
-
                 <tbody>
-                  {filteredExpenses.map((e, i) => (
-                    <tr key={i}>
-                      <td>{e.description}</td>
-                      <td>{e.category}</td>
-                      <td>{e.owner}</td>
-                      <td>{formatDate(e.expenseDate)}</td>
-                      <td>₹{Number(e.amount).toLocaleString()}</td>
-                      <td>
-                        <button
-                          className="danger"
-                          onClick={() =>
-                            deleteExpense(expenses.indexOf(e))
-                          }
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredExpenses.map((e, i) => {
+                    const originalIndex = expenses.indexOf(e);
+                    const isEditing = editIndex === originalIndex;
+
+                    return (
+                      <tr key={i}>
+                        {isEditing ? (
+                          <>
+                            <td>
+                              <input
+                                value={editForm.description}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    description: ev.target.value
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <select
+                                value={editForm.category}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    category: ev.target.value
+                                  })
+                                }
+                              >
+                                {EXPENSE_CATEGORIES.map(c => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                value={editForm.owner}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    owner: ev.target.value
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="date"
+                                value={formatDate(editForm.expenseDate)}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    expenseDate: ev.target.value
+                                      ? new Date(ev.target.value)
+                                      : null
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                value={editForm.amount}
+                                onChange={ev =>
+                                  setEditForm({
+                                    ...editForm,
+                                    amount: ev.target.value
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <button onClick={saveEdit}>Save</button>
+                              <button onClick={() => setEditIndex(null)}>
+                                Cancel
+                              </button>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td>{e.description}</td>
+                            <td>{e.category}</td>
+                            <td>{e.owner}</td>
+                            <td>{formatDate(e.expenseDate)}</td>
+                            <td>₹{Number(e.amount).toLocaleString()}</td>
+                            <td>
+                              <button onClick={() => startEdit(i)}>
+                                Edit
+                              </button>
+                              <button
+                                className="danger"
+                                onClick={() => deleteExpense(i)}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
