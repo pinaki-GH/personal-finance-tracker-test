@@ -2,6 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getData, saveData } from "../utils/storage";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend
+} from "chart.js";
+import { Pie } from "react-chartjs-2";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const EXPENSE_CATEGORIES = [
   "Housing",
@@ -66,6 +75,9 @@ export default function ExpenseSection() {
   const formatDate = (d: Date | null) =>
     d ? d.toISOString().split("T")[0] : "";
 
+  const getMonthKey = (d: Date | null) =>
+    d ? d.toISOString().slice(0, 7) : "";
+
   const addExpense = () => {
     if (!form.description || !form.amount || !form.category) return;
     persist([...expenses, form]);
@@ -75,25 +87,53 @@ export default function ExpenseSection() {
   const deleteExpense = (i: number) =>
     persist(expenses.filter((_, idx) => idx !== i));
 
-  // Build month list (YYYY-MM)
   const availableMonths = useMemo(() => {
-    const months = expenses
-      .map(e => formatDate(e.expenseDate)?.slice(0, 7))
-      .filter(Boolean);
-    return ["All", ...Array.from(new Set(months))];
+    const months = expenses.map(e => getMonthKey(e.expenseDate));
+    return ["All", ...Array.from(new Set(months.filter(Boolean)))];
   }, [expenses]);
 
   const filteredExpenses = useMemo(() => {
     if (monthFilter === "All") return expenses;
-    return expenses.filter(e =>
-      formatDate(e.expenseDate)?.startsWith(monthFilter)
-    );
+    return expenses.filter(e => getMonthKey(e.expenseDate) === monthFilter);
   }, [expenses, monthFilter]);
 
   const totalFilteredAmount = filteredExpenses.reduce(
     (sum, e) => sum + Number(e.amount),
     0
   );
+
+  const previousMonthTotal = useMemo(() => {
+    if (monthFilter === "All") return 0;
+    const [year, month] = monthFilter.split("-").map(Number);
+    const prev = new Date(year, month - 2);
+    const prevKey = prev.toISOString().slice(0, 7);
+    return expenses
+      .filter(e => getMonthKey(e.expenseDate) === prevKey)
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  }, [monthFilter, expenses]);
+
+  const percentChange =
+    previousMonthTotal === 0
+      ? 0
+      : ((totalFilteredAmount - previousMonthTotal) /
+          previousMonthTotal) *
+        100;
+
+  const categoryData = useMemo(() => {
+    const map: Record<string, number> = {};
+    filteredExpenses.forEach(e => {
+      map[e.category] = (map[e.category] || 0) + Number(e.amount);
+    });
+
+    return {
+      labels: Object.keys(map),
+      datasets: [
+        {
+          data: Object.values(map)
+        }
+      ]
+    };
+  }, [filteredExpenses]);
 
   return (
     <section>
@@ -102,15 +142,12 @@ export default function ExpenseSection() {
       {/* ADD EXPENSE */}
       <div className="card">
         <h3>Add Expense</h3>
-
         <div className="form-grid">
           <div>
             <label>Description</label>
             <input
               value={form.description}
-              onChange={e =>
-                setForm({ ...form, description: e.target.value })
-              }
+              onChange={e => setForm({ ...form, description: e.target.value })}
             />
           </div>
 
@@ -167,38 +204,49 @@ export default function ExpenseSection() {
         </div>
       </div>
 
-      {/* FILTER BAR */}
+      {/* FILTER */}
       {expenses.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            margin: "12px 0"
-          }}
-        >
-          <div>
-            <label style={{ marginRight: 8 }}>Filter by Month:</label>
-            <select
-              value={monthFilter}
-              onChange={e => setMonthFilter(e.target.value)}
-            >
-              {availableMonths.map(month => (
-                <option key={month} value={month}>
-                  {month}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <strong>
-              Total: ₹{totalFilteredAmount.toLocaleString()}
-            </strong>
-          </div>
+        <div style={{ margin: "12px 0" }}>
+          <label style={{ marginRight: 8 }}>Filter by Month:</label>
+          <select
+            value={monthFilter}
+            onChange={e => setMonthFilter(e.target.value)}
+          >
+            {availableMonths.map(month => (
+              <option key={month} value={month}>{month}</option>
+            ))}
+          </select>
         </div>
       )}
 
-      {/* EXPENSE TABLE */}
+      {/* MONTHLY SUMMARY */}
+      {monthFilter !== "All" && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <h3>Monthly Summary ({monthFilter})</h3>
+          <p>Total: ₹{totalFilteredAmount.toLocaleString()}</p>
+          <p>Previous Month: ₹{previousMonthTotal.toLocaleString()}</p>
+          <p>
+            Change:{" "}
+            <strong
+              style={{
+                color: percentChange >= 0 ? "red" : "green"
+              }}
+            >
+              {percentChange.toFixed(1)}%
+            </strong>
+          </p>
+        </div>
+      )}
+
+      {/* PIE CHART */}
+      {filteredExpenses.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <h3>Category Breakdown</h3>
+          <Pie data={categoryData} />
+        </div>
+      )}
+
+      {/* TABLE */}
       {filteredExpenses.length > 0 && (
         <div className="table-scroll-wrapper">
           <table className="data-table">
