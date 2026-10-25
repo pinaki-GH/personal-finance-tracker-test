@@ -974,4 +974,3 @@ export default function AssetSection() {
     </section>
   );
 }
-```
