@@ -694,17 +694,26 @@ export default function AssetSection() {
           </p>
         )}
 
-        <div className="card-actions">
-          <button className="primary" onClick={addAsset}>
-            Add Asset
-          </button>
+        <div
+  className="card-actions"
+  style={{
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 20
+  }}
+>
+  <button className="primary" onClick={addAsset}>
+    Add Asset
+  </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setForm({ ...emptyForm });
-              setFormError("");
-            }}
+<button
+type="button"
+onClick={() => {
+setForm({ ...emptyForm });
+setFormError("");
+}}
           >
             Clear Form
           </button>
