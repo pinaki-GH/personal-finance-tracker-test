@@ -195,6 +195,30 @@ export default function AssetSection() {
     [assets]
   );
 
+  // ================= CATEGORY ALLOCATION =================
+  // Allocation always reflects the complete portfolio, regardless of filters.
+  const categoryAllocation = useMemo(() => {
+    const totals = new Map<string, number>();
+
+    assets.forEach(asset => {
+      const category = asset.category.trim() || "Uncategorised";
+      const value = Number(asset.assetValue);
+      totals.set(
+        category,
+        (totals.get(category) ?? 0) +
+          (Number.isFinite(value) && value > 0 ? value : 0)
+      );
+    });
+
+    return Array.from(totals.entries())
+      .map(([category, value]) => ({
+        category,
+        value,
+        percentage: totalAssetValue > 0 ? (value / totalAssetValue) * 100 : 0
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [assets, totalAssetValue]);
+
   const assetsNeedingValuation = useMemo(
     () => assets.filter(needsValuationUpdate).length,
     [assets]
@@ -467,6 +491,83 @@ export default function AssetSection() {
         </div>
       </div>
 
+      {/* CATEGORY ALLOCATION — Phase 2 */}
+      <div className="card" style={{ marginBottom: 24, minWidth: 0 }}>
+        <h3 style={{ marginTop: 0 }}>Category Allocation</h3>
+        <p style={{ marginTop: -4, marginBottom: 16, opacity: 0.8 }}>
+          Portfolio value distribution by asset category. This chart includes all assets, regardless of active filters.
+        </p>
+
+        {assets.length === 0 ? (
+          <div
+            role="status"
+            style={{
+              border: "1px dashed var(--border-color, #d1d5db)",
+              borderRadius: 8,
+              padding: "20px 16px",
+              textAlign: "center"
+            }}
+          >
+            <strong>No allocation data yet</strong>
+            <p style={{ marginBottom: 0 }}>
+              Add an asset to see how your portfolio is distributed across categories.
+            </p>
+          </div>
+        ) : totalAssetValue <= 0 ? (
+          <p role="status">
+            Category percentages will appear once at least one asset has a value greater than zero.
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 16 }}>
+            {categoryAllocation.map(({ category, value, percentage }) => (
+              <div key={category} style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    flexWrap: "wrap",
+                    gap: "4px 12px",
+                    marginBottom: 6
+                  }}
+                >
+                  <span style={{ fontWeight: 600, overflowWrap: "anywhere" }}>
+                    {category}
+                  </span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {formatCurrency(value)} · {percentage.toFixed(1)}%
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label={`${category} allocation`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Number(percentage.toFixed(1))}
+                  style={{
+                    height: 10,
+                    width: "100%",
+                    overflow: "hidden",
+                    borderRadius: 999,
+                    background: "var(--muted, #e5e7eb)"
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${Math.min(100, Math.max(0, percentage))}%`,
+                      height: "100%",
+                      borderRadius: 999,
+                      background: "var(--primary, #2563eb)",
+                      transition: "width 180ms ease"
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ADD ASSET */}
 
       <div className="card">
@@ -715,7 +816,7 @@ export default function AssetSection() {
       {/* ASSET TABLE */}
 
       {assets.length === 0 ? (
-        <div className="card">
+        <div className="card" style={{ textAlign: "center", padding: "clamp(20px, 4vw, 32px)" }}>
           <h3>No Assets Yet</h3>
           <p>
             Add your first asset using the form above. Your saved assets will
@@ -723,7 +824,7 @@ export default function AssetSection() {
           </p>
         </div>
       ) : filteredAssets.length === 0 ? (
-        <div className="card">
+        <div className="card" style={{ textAlign: "center", padding: "clamp(20px, 4vw, 32px)" }}>
           <h3>No Matching Assets</h3>
           <p>
             No assets match your current search and filters. Try changing the
@@ -741,8 +842,14 @@ export default function AssetSection() {
           </button>
         </div>
       ) : (
-        <div className="table-scroll-wrapper">
-          <table className="data-table wide-table">
+        <div
+          className="table-scroll-wrapper"
+          role="region"
+          aria-label="Asset register table; scroll horizontally to view all columns"
+          tabIndex={0}
+          style={{ width: "100%", maxWidth: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}
+        >
+          <table className="data-table wide-table" style={{ minWidth: 1050 }}>
             <thead>
               <tr>
                 <th>Asset Name</th>
