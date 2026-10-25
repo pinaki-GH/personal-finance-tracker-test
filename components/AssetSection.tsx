@@ -1044,31 +1044,12 @@ setFormError("");
                           />
                         </td>
 
-                        <td className="actions">
-                          <button
-                            className="primary"
-                            onClick={saveEdit}
-                          >
-                            Save
-                          </button>
+                        
+{editError}
+</div>
+)}
 
-                          <button onClick={cancelEdit}>
-                            Cancel
-                          </button>
-
-                          {editError && (
-                            <div
-                              role="alert"
-                              style={{
-                                color: "#dc2626",
-                                minWidth: 150,
-                                marginTop: 8
-                              }}
-                            >
-                              {editError}
-                            </div>
-                          )}
-                        </td>
+</td>
                       </>
                     ) : (
                       <>
