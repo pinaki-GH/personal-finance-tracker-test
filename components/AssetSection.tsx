@@ -722,106 +722,152 @@ setFormError("");
 
       {/* ASSET REGISTER TOOLBAR */}
 
-      <div style={{ marginTop: 24 }}>
-        <h3>Asset Register</h3>
+<div style={{ marginTop: 24 }}>
+  <h3 style={{ marginBottom: 16 }}>Asset Register</h3>
 
-        {assets.length > 0 && (
-          <>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: 12,
-                marginBottom: 12
-              }}
-            >
-              <div>
-                <label htmlFor="asset-search">Search Assets</label>
-                <input
-                  id="asset-search"
-                  type="search"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  placeholder="Name, owner, institution, ID..."
-                />
-              </div>
+  {assets.length > 0 && (
+    <>
+      {/* SEARCH AND FILTERS */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+          gap: 20,
+          marginBottom: 20,
+          alignItems: "end"
+        }}
+      >
+        {/* SEARCH */}
+        <div style={{ minWidth: 0 }}>
+          <label
+            htmlFor="asset-search"
+            style={{
+              display: "block",
+              marginBottom: 8,
+              fontWeight: 600
+            }}
+          >
+            Search Assets
+          </label>
 
-              <div>
-                <label htmlFor="asset-owner-filter">Filter by Owner</label>
-                <select
-                  id="asset-owner-filter"
-                  value={ownerFilter}
-                  onChange={e => setOwnerFilter(e.target.value)}
-                >
-                  <option value={ALL_FILTER}>All Owners</option>
+          <input
+            id="asset-search"
+            type="search"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Name, owner, institution, ID..."
+            style={{
+              width: "100%",
+              boxSizing: "border-box"
+            }}
+          />
+        </div>
 
-                  {uniqueOwners.map(owner => (
-                    <option key={owner} value={owner}>
-                      {owner}
-                    </option>
-                  ))}
+        {/* OWNER FILTER */}
+        <div style={{ minWidth: 0 }}>
+          <label
+            htmlFor="asset-owner-filter"
+            style={{
+              display: "block",
+              marginBottom: 8,
+              fontWeight: 600
+            }}
+          >
+            Filter by Owner
+          </label>
 
-                  <option value={UNASSIGNED_FILTER}>
-                    Unassigned
-                  </option>
-                </select>
-              </div>
+          <select
+            id="asset-owner-filter"
+            value={ownerFilter}
+            onChange={e => setOwnerFilter(e.target.value)}
+            style={{
+              width: "100%",
+              boxSizing: "border-box"
+            }}
+          >
+            <option value={ALL_FILTER}>All Owners</option>
 
-              <div>
-                <label htmlFor="asset-category-filter">
-                  Filter by Category
-                </label>
-                <select
-                  id="asset-category-filter"
-                  value={categoryFilter}
-                  onChange={e => setCategoryFilter(e.target.value)}
-                >
-                  <option value={ALL_FILTER}>All Categories</option>
+            {uniqueOwners.map(owner => (
+              <option key={owner} value={owner}>
+                {owner}
+              </option>
+            ))}
 
-                  {uniqueCategories.map(category => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <option value={UNASSIGNED_FILTER}>Unassigned</option>
+          </select>
+        </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: 12,
-                marginBottom: 16
-              }}
-            >
-              <span>
-                Showing <strong>{filteredAssets.length}</strong> of{" "}
-                <strong>{assets.length}</strong> assets
-              </span>
+        {/* CATEGORY FILTER */}
+        <div style={{ minWidth: 0 }}>
+          <label
+            htmlFor="asset-category-filter"
+            style={{
+              display: "block",
+              marginBottom: 8,
+              fontWeight: 600
+            }}
+          >
+            Filter by Category
+          </label>
 
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 8
-                }}
-              >
-                <button onClick={exportFilteredAssets}>
-                  Export Filtered Assets
-                </button>
+          <select
+            id="asset-category-filter"
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            style={{
+              width: "100%",
+              boxSizing: "border-box"
+            }}
+          >
+            <option value={ALL_FILTER}>All Categories</option>
 
-                <button onClick={exportAllAssets}>
-                  Export All Assets
-                </button>
-              </div>
-            </div>
-          </>
-        )}
+            {uniqueCategories.map(category => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
+      {/* RESULTS COUNT AND EXPORT BUTTONS */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 16,
+          marginBottom: 20
+        }}
+      >
+        <span>
+          Showing <strong>{filteredAssets.length}</strong> of{" "}
+          <strong>{assets.length}</strong> assets
+        </span>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 10
+          }}
+        >
+          <button onClick={exportFilteredAssets}>
+            Export Filtered Assets
+          </button>
+
+          <button onClick={exportAllAssets}>
+            Export All Assets
+          </button>
+        </div>
+      </div>
+    </>
+  )}
+</div>
+      
       {/* ASSET TABLE */}
 
       {assets.length === 0 ? (
