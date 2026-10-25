@@ -1044,13 +1044,44 @@ setFormError("");
                           />
                         </td>
 
-                        
-{editError}
-</div>
-)}
+                        <td
+                          className="actions"
+                          style={{ whiteSpace: "nowrap" }}
+                        >
+                          <div
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8
+                            }}
+                          >
+                            <button
+                              className="primary"
+                              onClick={saveEdit}
+                            >
+                              Save
+                            </button>
 
-</td>
-                      </>
+                            <button onClick={cancelEdit}>
+                              Cancel
+                            </button>
+                          </div>
+
+                          {editError && (
+                            <div
+                              role="alert"
+                              style={{
+                                color: "#dc2626",
+                                minWidth: 150,
+                                marginTop: 8,
+                                whiteSpace: "normal"
+                              }}
+                            >
+                              {editError}
+                            </div>
+                          )}
+                        </td>
+                        </>
                     ) : (
                       <>
                         <td>{asset.assetName}</td>
