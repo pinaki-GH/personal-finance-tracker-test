@@ -15,6 +15,10 @@ const ASSET_CATEGORIES = [
   "Other"
 ];
 
+const ALL_FILTER = "All";
+const UNASSIGNED_FILTER = "__UNASSIGNED__";
+const STALE_VALUATION_DAYS = 365;
+
 type Asset = {
   assetName: string;
   category: string;
@@ -27,7 +31,10 @@ type Asset = {
   institution: string;
 };
 
-type StoredAsset = Omit<Asset, "purchaseDate" | "valueRecordDate"> & {
+type StoredAsset = Omit<
+  Asset,
+  "purchaseDate" | "valueRecordDate"
+> & {
   purchaseDate: string | null;
   valueRecordDate: string | null;
 };
@@ -44,188 +51,696 @@ const emptyForm: Asset = {
   institution: ""
 };
 
+const currencyFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 2
+});
+
+function formatCurrency(value: number): string {
+  return currencyFormatter.format(value);
+}
+
+function formatDate(date: Date | null): string {
+  if (!date || Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function parseDate(value: string | null | undefined): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function hydrateAsset(asset: StoredAsset): Asset {
+  return {
+    ...asset,
+    owner: asset.owner ?? "",
+    institution: asset.institution ?? "",
+    assetId: asset.assetId ?? "",
+    assetIdDescription: asset.assetIdDescription ?? "",
+    purchaseDate: parseDate(asset.purchaseDate),
+    valueRecordDate: parseDate(asset.valueRecordDate)
+  };
+}
+
+function validateAsset(asset: Asset): string | null {
+  if (!asset.assetName.trim()) {
+    return "Please enter an asset name.";
+  }
+
+  if (!asset.category) {
+    return "Please select an asset category.";
+  }
+
+  if (
+    asset.assetValue.trim() === "" ||
+    !Number.isFinite(Number(asset.assetValue)) ||
+    Number(asset.assetValue) < 0
+  ) {
+    return "Please enter a valid, non-negative asset value.";
+  }
+
+  return null;
+}
+
+function getValuationAge(date: Date | null): number | null {
+  if (!date || Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const valuationDate = new Date(date);
+  valuationDate.setHours(0, 0, 0, 0);
+
+  return Math.floor(
+    (today.getTime() - valuationDate.getTime()) /
+      (1000 * 60 * 60 * 24)
+  );
+}
+
+function needsValuationUpdate(asset: Asset): boolean {
+  const age = getValuationAge(asset.valueRecordDate);
+
+  return age === null || age < 0 || age > STALE_VALUATION_DAYS;
+}
+
 export default function AssetSection() {
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [form, setForm] = useState<Asset>(emptyForm);
+  const [form, setForm] = useState<Asset>({ ...emptyForm });
+
   const [editIndex, setEditIndex] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<Asset>(emptyForm);
-  const [ownerFilter, setOwnerFilter] = useState<string>("All");
+  const [editForm, setEditForm] = useState<Asset>({ ...emptyForm });
+
+  const [ownerFilter, setOwnerFilter] = useState(ALL_FILTER);
+  const [categoryFilter, setCategoryFilter] = useState(ALL_FILTER);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [formError, setFormError] = useState("");
+  const [editError, setEditError] = useState("");
+
+  // ================= LOAD ASSETS =================
 
   useEffect(() => {
-    const stored: StoredAsset[] = getData("assets");
-    setAssets(
-      stored.map(a => ({
-        ...a,
-        purchaseDate: a.purchaseDate ? new Date(a.purchaseDate) : null,
-        valueRecordDate: a.valueRecordDate ? new Date(a.valueRecordDate) : null
-      }))
-    );
+    const stored = (getData("assets") || []) as StoredAsset[];
+
+    setAssets(stored.map(hydrateAsset));
   }, []);
 
+  // ================= PERSIST ASSETS =================
+
   const persist = (updated: Asset[]) => {
-    const dehydrated: StoredAsset[] = updated.map(a => ({
-      ...a,
-      purchaseDate: a.purchaseDate?.toISOString() ?? null,
-      valueRecordDate: a.valueRecordDate?.toISOString() ?? null
+    const dehydrated: StoredAsset[] = updated.map(asset => ({
+      ...asset,
+      purchaseDate: asset.purchaseDate
+        ? asset.purchaseDate.toISOString()
+        : null,
+      valueRecordDate: asset.valueRecordDate
+        ? asset.valueRecordDate.toISOString()
+        : null
     }));
-    setAssets(updated);
+
     saveData("assets", dehydrated);
+    setAssets(updated);
   };
 
-  const formatDate = (d: Date | null) =>
-    d ? d.toISOString().split("T")[0] : "";
+  // ================= PORTFOLIO SUMMARY =================
+  // Summary cards always represent ALL assets, not just filtered assets.
 
-  // Unique owner list for dropdown
+  const totalAssetValue = useMemo(
+    () =>
+      assets.reduce((total, asset) => {
+        const value = Number(asset.assetValue);
+
+        return total + (Number.isFinite(value) ? value : 0);
+      }, 0),
+    [assets]
+  );
+
+  const totalCategories = useMemo(
+    () => new Set(assets.map(asset => asset.category).filter(Boolean)).size,
+    [assets]
+  );
+
+  const assetsNeedingValuation = useMemo(
+    () => assets.filter(needsValuationUpdate).length,
+    [assets]
+  );
+
+  // ================= FILTER OPTIONS =================
+
   const uniqueOwners = useMemo(() => {
     const owners = assets
-      .map(a => a.owner)
-      .filter(o => o && o.trim() !== "");
-    return ["All", ...Array.from(new Set(owners))];
+      .map(asset => asset.owner.trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(owners)).sort((a, b) =>
+      a.localeCompare(b)
+    );
   }, [assets]);
 
-  // Filtered assets
+  const uniqueCategories = useMemo(() => {
+    const categories = assets
+      .map(asset => asset.category)
+      .filter(Boolean);
+
+    return Array.from(new Set(categories)).sort((a, b) =>
+      a.localeCompare(b)
+    );
+  }, [assets]);
+
+  // ================= FILTERED ASSETS =================
+
   const filteredAssets = useMemo(() => {
-    if (ownerFilter === "All") return assets;
-    return assets.filter(a => a.owner === ownerFilter);
-  }, [assets, ownerFilter]);
+    const query = searchTerm.trim().toLowerCase();
+
+    return assets.filter(asset => {
+      const matchesOwner =
+        ownerFilter === ALL_FILTER
+          ? true
+          : ownerFilter === UNASSIGNED_FILTER
+            ? !asset.owner.trim()
+            : asset.owner.trim() === ownerFilter;
+
+      const matchesCategory =
+        categoryFilter === ALL_FILTER ||
+        asset.category === categoryFilter;
+
+      const searchableFields = [
+        asset.assetName,
+        asset.category,
+        asset.owner,
+        asset.institution,
+        asset.assetId,
+        asset.assetIdDescription
+      ];
+
+      const matchesSearch =
+        !query ||
+        searchableFields.some(value =>
+          (value ?? "").toLowerCase().includes(query)
+        );
+
+      return matchesOwner && matchesCategory && matchesSearch;
+    });
+  }, [assets, ownerFilter, categoryFilter, searchTerm]);
+
+  // ================= ADD ASSET =================
 
   const addAsset = () => {
-    if (!form.assetName || !form.assetValue || !form.category) return;
-    persist([...assets, form]);
-    setForm(emptyForm);
+    const error = validateAsset(form);
+
+    if (error) {
+      setFormError(error);
+      return;
+    }
+
+    persist([
+      ...assets,
+      {
+        ...form,
+        assetName: form.assetName.trim(),
+        owner: form.owner.trim(),
+        institution: form.institution.trim(),
+        assetId: form.assetId.trim(),
+        assetIdDescription: form.assetIdDescription.trim()
+      }
+    ]);
+
+    setForm({ ...emptyForm });
+    setFormError("");
   };
 
-  const startEdit = (filteredIndex: number) => {
-    const originalIndex = assets.indexOf(filteredAssets[filteredIndex]);
+  // ================= EDIT ASSET =================
+
+  const startEdit = (originalIndex: number) => {
     setEditIndex(originalIndex);
-    setEditForm(assets[originalIndex]);
+    setEditForm({ ...assets[originalIndex] });
+    setEditError("");
+  };
+
+  const cancelEdit = () => {
+    setEditIndex(null);
+    setEditForm({ ...emptyForm });
+    setEditError("");
   };
 
   const saveEdit = () => {
-    if (editIndex === null) return;
+    if (editIndex === null) {
+      return;
+    }
+
+    const error = validateAsset(editForm);
+
+    if (error) {
+      setEditError(error);
+      return;
+    }
+
     const updated = [...assets];
-    updated[editIndex] = editForm;
+
+    updated[editIndex] = {
+      ...editForm,
+      assetName: editForm.assetName.trim(),
+      owner: editForm.owner.trim(),
+      institution: editForm.institution.trim(),
+      assetId: editForm.assetId.trim(),
+      assetIdDescription: editForm.assetIdDescription.trim()
+    };
+
     persist(updated);
-    setEditIndex(null);
+    cancelEdit();
   };
 
-  const deleteAsset = (filteredIndex: number) => {
-    const originalIndex = assets.indexOf(filteredAssets[filteredIndex]);
-    persist(assets.filter((_, idx) => idx !== originalIndex));
+  // ================= DELETE ASSET =================
+
+  const deleteAsset = (originalIndex: number) => {
+    const asset = assets[originalIndex];
+
+    if (!asset) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete "${asset.assetName}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    persist(assets.filter((_, index) => index !== originalIndex));
+
+    if (editIndex === originalIndex) {
+      cancelEdit();
+    } else if (editIndex !== null && editIndex > originalIndex) {
+      setEditIndex(editIndex - 1);
+    }
   };
 
-  const exportAssets = () => {
+  // ================= EXPORT =================
+
+  const exportData = (data: Asset[], fileName: string) => {
+    if (data.length === 0) {
+      window.alert("There are no assets to export.");
+      return;
+    }
+
     exportToExcel(
-      filteredAssets.map(a => ({
-        "Asset Name": a.assetName,
-        "Category": a.category,
-        "Purchase Date": formatDate(a.purchaseDate),
-        "Asset Value": a.assetValue,
-        "Value Record Date": formatDate(a.valueRecordDate),
-        "Asset ID": a.assetId,
-        "Asset ID Description": a.assetIdDescription,
-        "Owner": a.owner,
-        "Institution": a.institution
+      data.map(asset => ({
+        "Asset Name": asset.assetName,
+        "Category": asset.category,
+        "Purchase Date": formatDate(asset.purchaseDate),
+        "Asset Value": asset.assetValue,
+        "Value Record Date": formatDate(asset.valueRecordDate),
+        "Asset ID": asset.assetId,
+        "Asset ID Description": asset.assetIdDescription,
+        "Owner": asset.owner,
+        "Institution": asset.institution
       })),
-      "assets"
+      fileName
     );
   };
+
+  const exportAllAssets = () => {
+    exportData(assets, "assets");
+  };
+
+  const exportFilteredAssets = () => {
+    exportData(filteredAssets, "filtered-assets");
+  };
+
+  // ================= FORM FIELD HELPERS =================
+
+  const updateForm = <K extends keyof Asset>(
+    field: K,
+    value: Asset[K]
+  ) => {
+    setForm(previous => ({
+      ...previous,
+      [field]: value
+    }));
+
+    setFormError("");
+  };
+
+  const updateEditForm = <K extends keyof Asset>(
+    field: K,
+    value: Asset[K]
+  ) => {
+    setEditForm(previous => ({
+      ...previous,
+      [field]: value
+    }));
+
+    setEditError("");
+  };
+
+  // ================= RENDER =================
 
   return (
     <section>
       <h2>🏦 Assets</h2>
 
+      {/* PORTFOLIO SUMMARY */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 16,
+          marginBottom: 24
+        }}
+      >
+        <div className="card">
+          <h3>Total Asset Value</h3>
+          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
+            {formatCurrency(totalAssetValue)}
+          </p>
+          <small>Across all recorded assets</small>
+        </div>
+
+        <div className="card">
+          <h3>Total Assets</h3>
+          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
+            {assets.length}
+          </p>
+          <small>Recorded asset entries</small>
+        </div>
+
+        <div className="card">
+          <h3>Asset Categories</h3>
+          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
+            {totalCategories}
+          </p>
+          <small>Categories currently represented</small>
+        </div>
+
+        <div className="card">
+          <h3>Valuation Updates</h3>
+          <p
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              margin: 0,
+              color: assetsNeedingValuation > 0 ? "#b45309" : "inherit"
+            }}
+          >
+            {assetsNeedingValuation}
+          </p>
+          <small>
+            Missing, future-dated, or older than {STALE_VALUATION_DAYS} days
+          </small>
+        </div>
+      </div>
+
       {/* ADD ASSET */}
+
       <div className="card">
         <h3>Add Asset</h3>
 
         <div className="form-grid">
           <div>
-            <label>Asset Name</label>
-            <input value={form.assetName} onChange={e => setForm({ ...form, assetName: e.target.value })} />
+            <label htmlFor="asset-name">Asset Name *</label>
+            <input
+              id="asset-name"
+              value={form.assetName}
+              onChange={e => updateForm("assetName", e.target.value)}
+              placeholder="e.g. Savings Account"
+            />
           </div>
 
           <div>
-            <label>Category</label>
-            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+            <label htmlFor="asset-category">Category *</label>
+            <select
+              id="asset-category"
+              value={form.category}
+              onChange={e => updateForm("category", e.target.value)}
+            >
               <option value="">Select Category</option>
-              {ASSET_CATEGORIES.map(c => (
-                <option key={c} value={c}>{c}</option>
+              {ASSET_CATEGORIES.map(category => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label>Purchase Date</label>
-            <input type="date" value={formatDate(form.purchaseDate)} onChange={e => setForm({ ...form, purchaseDate: e.target.value ? new Date(e.target.value) : null })} />
+            <label htmlFor="asset-purchase-date">Purchase Date</label>
+            <input
+              id="asset-purchase-date"
+              type="date"
+              value={formatDate(form.purchaseDate)}
+              onChange={e =>
+                updateForm(
+                  "purchaseDate",
+                  e.target.value ? parseDate(e.target.value) : null
+                )
+              }
+            />
           </div>
 
           <div>
-            <label>Asset Value</label>
-            <input value={form.assetValue} onChange={e => setForm({ ...form, assetValue: e.target.value })} />
+            <label htmlFor="asset-value">Asset Value (₹) *</label>
+            <input
+              id="asset-value"
+              type="number"
+              min="0"
+              step="any"
+              value={form.assetValue}
+              onChange={e => updateForm("assetValue", e.target.value)}
+              placeholder="Enter value"
+            />
           </div>
 
           <div>
-            <label>Value Record Date</label>
-            <input type="date" value={formatDate(form.valueRecordDate)} onChange={e => setForm({ ...form, valueRecordDate: e.target.value ? new Date(e.target.value) : null })} />
+            <label htmlFor="asset-value-date">Value Record Date</label>
+            <input
+              id="asset-value-date"
+              type="date"
+              value={formatDate(form.valueRecordDate)}
+              onChange={e =>
+                updateForm(
+                  "valueRecordDate",
+                  e.target.value ? parseDate(e.target.value) : null
+                )
+              }
+            />
           </div>
 
           <div>
-            <label>Asset ID</label>
-            <input value={form.assetId} onChange={e => setForm({ ...form, assetId: e.target.value })} />
+            <label htmlFor="asset-id">Asset ID</label>
+            <input
+              id="asset-id"
+              value={form.assetId}
+              onChange={e => updateForm("assetId", e.target.value)}
+              placeholder="Optional"
+            />
           </div>
 
           <div>
-            <label>Asset ID Description</label>
-            <input value={form.assetIdDescription} onChange={e => setForm({ ...form, assetIdDescription: e.target.value })} />
+            <label htmlFor="asset-id-description">
+              Asset ID Description
+            </label>
+            <input
+              id="asset-id-description"
+              value={form.assetIdDescription}
+              onChange={e =>
+                updateForm("assetIdDescription", e.target.value)
+              }
+              placeholder="Optional"
+            />
           </div>
 
           <div>
-            <label>Owner</label>
-            <input value={form.owner} onChange={e => setForm({ ...form, owner: e.target.value })} />
+            <label htmlFor="asset-owner">Owner</label>
+            <input
+              id="asset-owner"
+              value={form.owner}
+              onChange={e => updateForm("owner", e.target.value)}
+              placeholder="e.g. Self, Spouse"
+            />
           </div>
 
           <div>
-            <label>Institution</label>
-            <input value={form.institution} onChange={e => setForm({ ...form, institution: e.target.value })} />
+            <label htmlFor="asset-institution">Institution</label>
+            <input
+              id="asset-institution"
+              value={form.institution}
+              onChange={e => updateForm("institution", e.target.value)}
+              placeholder="e.g. Bank or broker"
+            />
           </div>
         </div>
 
+        {formError && (
+          <p role="alert" style={{ color: "#dc2626", marginTop: 12 }}>
+            {formError}
+          </p>
+        )}
+
         <div className="card-actions">
-          <button className="primary" onClick={addAsset}>Add Asset</button>
+          <button className="primary" onClick={addAsset}>
+            Add Asset
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setForm({ ...emptyForm });
+              setFormError("");
+            }}
+          >
+            Clear Form
+          </button>
         </div>
       </div>
 
-      {/* FILTER + EXPORT BAR */}
-      {assets.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            margin: "12px 0"
-          }}
-        >
-          <div>
-            <label style={{ marginRight: 8 }}>Filter by Owner:</label>
-            <select
-              value={ownerFilter}
-              onChange={e => setOwnerFilter(e.target.value)}
-            >
-              {uniqueOwners.map(owner => (
-                <option key={owner} value={owner}>{owner}</option>
-              ))}
-            </select>
-          </div>
+      {/* ASSET REGISTER TOOLBAR */}
 
-          <button onClick={exportAssets}>
-            Export Assets to Excel
-          </button>
-        </div>
-      )}
+      <div style={{ marginTop: 24 }}>
+        <h3>Asset Register</h3>
+
+        {assets.length > 0 && (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 12,
+                marginBottom: 12
+              }}
+            >
+              <div>
+                <label htmlFor="asset-search">Search Assets</label>
+                <input
+                  id="asset-search"
+                  type="search"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  placeholder="Name, owner, institution, ID..."
+                />
+              </div>
+
+              <div>
+                <label htmlFor="asset-owner-filter">Filter by Owner</label>
+                <select
+                  id="asset-owner-filter"
+                  value={ownerFilter}
+                  onChange={e => setOwnerFilter(e.target.value)}
+                >
+                  <option value={ALL_FILTER}>All Owners</option>
+
+                  {uniqueOwners.map(owner => (
+                    <option key={owner} value={owner}>
+                      {owner}
+                    </option>
+                  ))}
+
+                  <option value={UNASSIGNED_FILTER}>
+                    Unassigned
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="asset-category-filter">
+                  Filter by Category
+                </label>
+                <select
+                  id="asset-category-filter"
+                  value={categoryFilter}
+                  onChange={e => setCategoryFilter(e.target.value)}
+                >
+                  <option value={ALL_FILTER}>All Categories</option>
+
+                  {uniqueCategories.map(category => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 12,
+                marginBottom: 16
+              }}
+            >
+              <span>
+                Showing <strong>{filteredAssets.length}</strong> of{" "}
+                <strong>{assets.length}</strong> assets
+              </span>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8
+                }}
+              >
+                <button onClick={exportFilteredAssets}>
+                  Export Filtered Assets
+                </button>
+
+                <button onClick={exportAllAssets}>
+                  Export All Assets
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* ASSET TABLE */}
-      {filteredAssets.length > 0 && (
+
+      {assets.length === 0 ? (
+        <div className="card">
+          <h3>No Assets Yet</h3>
+          <p>
+            Add your first asset using the form above. Your saved assets will
+            appear here.
+          </p>
+        </div>
+      ) : filteredAssets.length === 0 ? (
+        <div className="card">
+          <h3>No Matching Assets</h3>
+          <p>
+            No assets match your current search and filters. Try changing the
+            search term or selecting different filters.
+          </p>
+
+          <button
+            onClick={() => {
+              setSearchTerm("");
+              setOwnerFilter(ALL_FILTER);
+              setCategoryFilter(ALL_FILTER);
+            }}
+          >
+            Clear Filters
+          </button>
+        </div>
+      ) : (
         <div className="table-scroll-wrapper">
           <table className="data-table wide-table">
             <thead>
@@ -244,23 +759,214 @@ export default function AssetSection() {
             </thead>
 
             <tbody>
-              {filteredAssets.map((a, i) => (
-                <tr key={i}>
-                  <td>{a.assetName}</td>
-                  <td>{a.category}</td>
-                  <td>{formatDate(a.purchaseDate)}</td>
-                  <td>₹{Number(a.assetValue).toLocaleString()}</td>
-                  <td>{formatDate(a.valueRecordDate)}</td>
-                  <td>{a.assetId}</td>
-                  <td>{a.assetIdDescription}</td>
-                  <td>{a.owner}</td>
-                  <td>{a.institution}</td>
-                  <td className="actions">
-                    <button onClick={() => startEdit(i)}>Edit</button>
-                    <button className="danger" onClick={() => deleteAsset(i)}>Delete</button>
-                  </td>
-                </tr>
-              ))}
+              {filteredAssets.map(asset => {
+                const originalIndex = assets.indexOf(asset);
+                const isEditing = editIndex === originalIndex;
+
+                return (
+                  <tr key={originalIndex}>
+                    {isEditing ? (
+                      <>
+                        <td>
+                          <input
+                            aria-label="Edit asset name"
+                            value={editForm.assetName}
+                            onChange={e =>
+                              updateEditForm("assetName", e.target.value)
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          <select
+                            aria-label="Edit asset category"
+                            value={editForm.category}
+                            onChange={e =>
+                              updateEditForm("category", e.target.value)
+                            }
+                          >
+                            <option value="">Select Category</option>
+                            {ASSET_CATEGORIES.map(category => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        <td>
+                          <input
+                            aria-label="Edit purchase date"
+                            type="date"
+                            value={formatDate(editForm.purchaseDate)}
+                            onChange={e =>
+                              updateEditForm(
+                                "purchaseDate",
+                                e.target.value
+                                  ? parseDate(e.target.value)
+                                  : null
+                              )
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          <input
+                            aria-label="Edit asset value"
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={editForm.assetValue}
+                            onChange={e =>
+                              updateEditForm("assetValue", e.target.value)
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          <input
+                            aria-label="Edit value record date"
+                            type="date"
+                            value={formatDate(editForm.valueRecordDate)}
+                            onChange={e =>
+                              updateEditForm(
+                                "valueRecordDate",
+                                e.target.value
+                                  ? parseDate(e.target.value)
+                                  : null
+                              )
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          <input
+                            aria-label="Edit asset ID"
+                            value={editForm.assetId}
+                            onChange={e =>
+                              updateEditForm("assetId", e.target.value)
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          <input
+                            aria-label="Edit asset ID description"
+                            value={editForm.assetIdDescription}
+                            onChange={e =>
+                              updateEditForm(
+                                "assetIdDescription",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          <input
+                            aria-label="Edit owner"
+                            value={editForm.owner}
+                            onChange={e =>
+                              updateEditForm("owner", e.target.value)
+                            }
+                          />
+                        </td>
+
+                        <td>
+                          <input
+                            aria-label="Edit institution"
+                            value={editForm.institution}
+                            onChange={e =>
+                              updateEditForm("institution", e.target.value)
+                            }
+                          />
+                        </td>
+
+                        <td className="actions">
+                          <button
+                            className="primary"
+                            onClick={saveEdit}
+                          >
+                            Save
+                          </button>
+
+                          <button onClick={cancelEdit}>
+                            Cancel
+                          </button>
+
+                          {editError && (
+                            <div
+                              role="alert"
+                              style={{
+                                color: "#dc2626",
+                                minWidth: 150,
+                                marginTop: 8
+                              }}
+                            >
+                              {editError}
+                            </div>
+                          )}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{asset.assetName}</td>
+
+                        <td>{asset.category}</td>
+
+                        <td>{formatDate(asset.purchaseDate) || "—"}</td>
+
+                        <td>
+                          {formatCurrency(Number(asset.assetValue) || 0)}
+                        </td>
+
+                        <td>
+                          <div>
+                            {formatDate(asset.valueRecordDate) || "—"}
+                          </div>
+
+                          {needsValuationUpdate(asset) && (
+                            <small
+                              style={{
+                                display: "block",
+                                color: "#b45309",
+                                marginTop: 4
+                              }}
+                            >
+                              {asset.valueRecordDate
+                                ? "Update recommended"
+                                : "Date missing"}
+                            </small>
+                          )}
+                        </td>
+
+                        <td>{asset.assetId || "—"}</td>
+
+                        <td>{asset.assetIdDescription || "—"}</td>
+
+                        <td>{asset.owner || "Unassigned"}</td>
+
+                        <td>{asset.institution || "—"}</td>
+
+                        <td className="actions">
+                          <button
+                            onClick={() => startEdit(originalIndex)}
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            className="danger"
+                            onClick={() => deleteAsset(originalIndex)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -268,3 +974,4 @@ export default function AssetSection() {
     </section>
   );
 }
+```
