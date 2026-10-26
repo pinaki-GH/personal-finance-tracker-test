@@ -908,6 +908,7 @@ export default function LiabilitySection() {
 
       {/* TABLE */}
 
+      <div className="card">
         {liabilities.length === 0 ? (
           <div className="empty-state">
             <h4>No liabilities recorded yet</h4>
