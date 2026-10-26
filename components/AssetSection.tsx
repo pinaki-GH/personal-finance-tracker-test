@@ -17,7 +17,7 @@ const ASSET_CATEGORIES = [
 
 const ALL_FILTER = "All";
 const UNASSIGNED_FILTER = "__UNASSIGNED__";
-const STALE_VALUATION_DAYS = 365;
+const STALE_VALUATION_DAYS = 90;
 
 type Asset = {
   assetName: string;
