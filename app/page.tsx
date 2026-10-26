@@ -8,7 +8,7 @@ import AssetSection from "../components/AssetSection";
 import LiabilitySection from "../components/LiabilitySection";
 import ExpenseSection from "../components/ExpenseSection";
 import MonthlyTracking from "../components/MonthlyTracking";
-
+import AnnualInsights from "../components/AnnualInsights";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("networth");
