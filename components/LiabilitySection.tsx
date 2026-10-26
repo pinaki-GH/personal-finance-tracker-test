@@ -365,7 +365,7 @@ export default function LiabilitySection() {
 
   // ================= FORM HANDLERS =================
 
-  const updateFormField = <K extends keyof Liability>(
+  const updateFormField = <K extends keyof Liability,>(
     field: K,
     value: Liability[K]
   ) => {
@@ -373,7 +373,7 @@ export default function LiabilitySection() {
     setFormError("");
   };
 
-  const updateEditField = <K extends keyof Liability>(
+  const updateEditField = <K extends keyof Liability,>(
     field: K,
     value: Liability[K]
   ) => {
