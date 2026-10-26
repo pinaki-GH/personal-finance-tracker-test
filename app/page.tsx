@@ -22,8 +22,7 @@ export default function Home() {
     { id: "expenses", label: "Expenses" }
   ];
 
- return (
-
+ return
    <main>
     <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
     
@@ -33,6 +32,5 @@ export default function Home() {
     {activeTab === "monthly" && <MonthlyTracking />}
     {activeTab === "insights" && <AnnualInsights />}
     {activeTab === "expenses" && <ExpenseSection />}
-  </main>
-);
+  </main>;
 }
