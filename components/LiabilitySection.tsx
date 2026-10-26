@@ -792,120 +792,119 @@ export default function LiabilitySection() {
         </div>
       </div>
 
-      {/* LIABILITY REGISTER */}
+      {/* LIABILITY REGISTER TOOLBAR */}
 
       <div style={{ marginTop: 24 }}>
-        <div className="register-heading">
-          <div>
-            <h3>Liability Register</h3>
-            <p className="section-description">
-              Search, filter, update, and export your recorded liabilities.
-            </p>
-          </div>
+        <h3>Liability Register</h3>
 
-          <div className="register-count">
-            Showing {filteredLiabilities.length} of {liabilities.length}
-          </div>
-        </div>
-
-        {/* FILTERS */}
-
-        <div
-          className="liability-filter-bar"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
-            gap: 20,
-            marginBottom: 20,
-            alignItems: "end"
-          }}
-        >
-          <div className="filter-field search-filter">
-            <label htmlFor="liability-search" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Search Liabilities</label>
-            <input
-              id="liability-search"
-              type="search"
-              value={searchTerm}
-              onChange={event => setSearchTerm(event.target.value)}
-              placeholder="Name, owner, institution, ID..."
-              style={{ width: "100%", boxSizing: "border-box" }}
-            />
-          </div>
-
-          <div className="filter-field">
-            <label htmlFor="liability-owner-filter" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Filter by Owner</label>
-            <select
-              id="liability-owner-filter"
-              value={ownerFilter}
-              onChange={event => setOwnerFilter(event.target.value)}
-              style={{ width: "100%", boxSizing: "border-box" }}
-            >
-              <option value={ALL_FILTER}>All Owners</option>
-
-              {uniqueOwners.map(owner => (
-                <option key={owner} value={owner}>
-                  {owner}
-                </option>
-              ))}
-
-              {liabilities.some(liability => !liability.owner.trim()) && (
-                <option value={UNASSIGNED_FILTER}>Unassigned</option>
-              )}
-            </select>
-          </div>
-
-          <div className="filter-field">
-            <label htmlFor="liability-category-filter" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Filter by Category</label>
-            <select
-              id="liability-category-filter"
-              value={categoryFilter}
-              onChange={event => setCategoryFilter(event.target.value)}
-              style={{ width: "100%", boxSizing: "border-box" }}
-            >
-              <option value={ALL_FILTER}>All Categories</option>
-
-              {uniqueCategories.map(category => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-actions">
-            <button
-              type="button"
-              onClick={() => {
-                setSearchTerm("");
-                setOwnerFilter(ALL_FILTER);
-                setCategoryFilter(ALL_FILTER);
+        {liabilities.length > 0 && (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 12,
+                marginBottom: 12
               }}
             >
-              Reset Filters
-            </button>
-          </div>
-        </div>
+              <div>
+                <label htmlFor="liability-search">Search Liabilities</label>
+                <input
+                  id="liability-search"
+                  type="search"
+                  value={searchTerm}
+                  onChange={event => setSearchTerm(event.target.value)}
+                  placeholder="Name, owner, institution, ID..."
+                />
+              </div>
 
-        {/* EXPORT ACTIONS */}
+              <div>
+                <label htmlFor="liability-owner-filter">Filter by Owner</label>
+                <select
+                  id="liability-owner-filter"
+                  value={ownerFilter}
+                  onChange={event => setOwnerFilter(event.target.value)}
+                >
+                  <option value={ALL_FILTER}>All Owners</option>
+                  {uniqueOwners.map(owner => (
+                    <option key={owner} value={owner}>
+                      {owner}
+                    </option>
+                  ))}
+                  {liabilities.some(liability => !liability.owner.trim()) && (
+                    <option value={UNASSIGNED_FILTER}>Unassigned</option>
+                  )}
+                </select>
+              </div>
 
-        <div className="card-actions liability-export-actions">
-          <button
-            type="button"
-            onClick={exportAll}
-            disabled={liabilities.length === 0}
-          >
-            Export All to Excel
-          </button>
+              <div>
+                <label htmlFor="liability-category-filter">Filter by Category</label>
+                <select
+                  id="liability-category-filter"
+                  value={categoryFilter}
+                  onChange={event => setCategoryFilter(event.target.value)}
+                >
+                  <option value={ALL_FILTER}>All Categories</option>
+                  {uniqueCategories.map(category => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-          <button
-            type="button"
-            onClick={exportFiltered}
-            disabled={filteredLiabilities.length === 0}
-          >
-            Export Filtered to Excel
-          </button>
-        </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 12,
+                marginBottom: 16
+              }}
+            >
+              <span>
+                Showing <strong>{filteredLiabilities.length}</strong> of{" "}
+                <strong>{liabilities.length}</strong> liabilities
+              </span>
 
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 8
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setOwnerFilter(ALL_FILTER);
+                    setCategoryFilter(ALL_FILTER);
+                  }}
+                >
+                  Reset Filters
+                </button>
+                <button
+                  type="button"
+                  onClick={exportFiltered}
+                  disabled={filteredLiabilities.length === 0}
+                >
+                  Export Filtered Liabilities
+                </button>
+                <button
+                  type="button"
+                  onClick={exportAll}
+                  disabled={liabilities.length === 0}
+                >
+                  Export All Liabilities
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
         {/* TABLE */}
 
         {liabilities.length === 0 ? (
