@@ -16,7 +16,7 @@ const LIABILITY_CATEGORIES = [
 
 const ALL_FILTER = "All";
 const UNASSIGNED_FILTER = "__UNASSIGNED__";
-const STALE_VALUATION_DAYS = 365;
+const STALE_VALUATION_DAYS = 90;
 
 type Liability = {
   liabilityName: string;
@@ -568,7 +568,7 @@ export default function LiabilitySection() {
             {liabilitiesNeedingValuation}
           </strong>
           <span className="summary-description">
-            Missing, future-dated, or older than 365 days
+            Missing, future-dated, or older than 90 days
           </span>
         </div>
       </div>
