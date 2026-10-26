@@ -905,7 +905,8 @@ export default function LiabilitySection() {
           </>
         )}
       </div>
-        {/* TABLE */}
+
+      {/* TABLE */}
 
         {liabilities.length === 0 ? (
           <div className="empty-state">
