@@ -564,9 +564,7 @@ export default function LiabilitySection() {
         <div className="card">
           <h3>Valuation Updates</h3>
           <p style={{ fontSize: 24, fontWeight: 700, margin: 0, color: liabilitiesNeedingValuation > 0 ? "#b45309" : "inherit" }}>{liabilitiesNeedingValuation}</p>
-          <span className="summary-description">
-            Missing, future-dated, or older than 90 days
-          </span>
+          <small>Missing, future-dated, or older than {STALE_VALUATION_DAYS} days</small>
         </div>
       </div>
 
