@@ -524,7 +524,7 @@ export default function LiabilitySection() {
   // ================= RENDER =================
 
   return (
-    <section className="liability-section">
+    <section>
       <h2>📉 Liabilities</h2>
 
       <p className="section-description">
@@ -535,38 +535,35 @@ export default function LiabilitySection() {
 
       {/* SUMMARY CARDS */}
 
-      <div className="summary-grid liability-summary-grid">
-        <div className="card summary-card">
-          <span className="summary-label">Total Outstanding Liabilities</span>
-          <strong className="summary-value">
-            {formatCurrency(totalLiabilityValue)}
-          </strong>
-          <span className="summary-description">
-            Across all recorded liabilities
-          </span>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 16,
+          marginBottom: 24
+        }}
+      >
+        <div className="card">
+          <h3>Total Outstanding Liabilities</h3>
+          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{formatCurrency(totalLiabilityValue)}</p>
+          <small>Across all recorded liabilities</small>
         </div>
 
-        <div className="card summary-card">
-          <span className="summary-label">Number of Liabilities</span>
-          <strong className="summary-value">{liabilities.length}</strong>
-          <span className="summary-description">
-            Total recorded obligations
-          </span>
+        <div className="card">
+          <h3>Total Liabilities</h3>
+          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{liabilities.length}</p>
+          <small>Recorded liability entries</small>
         </div>
 
-        <div className="card summary-card">
-          <span className="summary-label">Liability Categories</span>
-          <strong className="summary-value">{totalCategories}</strong>
-          <span className="summary-description">
-            Categories currently in use
-          </span>
+        <div className="card">
+          <h3>Liability Categories</h3>
+          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{totalCategories}</p>
+          <small>Categories currently represented</small>
         </div>
 
-        <div className="card summary-card">
-          <span className="summary-label">Valuations Needing Attention</span>
-          <strong className="summary-value">
-            {liabilitiesNeedingValuation}
-          </strong>
+        <div className="card">
+          <h3>Valuation Updates</h3>
+          <p style={{ fontSize: 24, fontWeight: 700, margin: 0, color: liabilitiesNeedingValuation > 0 ? "#b45309" : "inherit" }}>{liabilitiesNeedingValuation}</p>
           <span className="summary-description">
             Missing, future-dated, or older than 90 days
           </span>
@@ -576,18 +573,17 @@ export default function LiabilitySection() {
       {/* CATEGORY ALLOCATION */}
 
       {categoryAllocation.length > 0 && (
-        <div className="card liability-allocation-card">
-          <h3>Outstanding Liabilities by Category</h3>
+        <div className="card" style={{ marginBottom: 24, minWidth: 0 }}>
+          <h3 style={{ marginTop: 0 }}>Category Allocation</h3>
 
-          <p className="section-description">
-            Allocation is based on all liabilities, not the current search
-            results or filters.
+          <p style={{ marginTop: -4, marginBottom: 16, opacity: 0.8 }}>
+            Outstanding liability distribution by category. This includes all liabilities, regardless of active filters.
           </p>
 
-          <div className="category-allocation-list">
+          <div className="category-allocation-list" style={{ display: "grid", gap: 16 }}>
             {categoryAllocation.map(item => (
               <div className="category-allocation-item" key={item.category}>
-                <div className="category-allocation-heading">
+                <div className="category-allocation-heading" style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
                   <span className="category-allocation-name">
                     {item.category}
                   </span>
@@ -603,6 +599,7 @@ export default function LiabilitySection() {
 
                 <div
                   className="category-allocation-track"
+                  style={{ width: "100%", height: 9, overflow: "hidden", borderRadius: 999, background: "#e5e7eb" }}
                   role="progressbar"
                   aria-label={`${item.category} share of outstanding liabilities`}
                   aria-valuemin={0}
@@ -612,7 +609,11 @@ export default function LiabilitySection() {
                   <div
                     className="category-allocation-bar"
                     style={{
-                      width: `${Math.min(100, Math.max(0, item.percentage))}%`
+                      width: `${Math.min(100, Math.max(0, item.percentage))}%`,
+                      height: "100%",
+                      borderRadius: 999,
+                      background: "#64748b",
+                      transition: "width 180ms ease"
                     }}
                   />
                 </div>
@@ -624,7 +625,7 @@ export default function LiabilitySection() {
 
       {/* ADD LIABILITY FORM */}
 
-      <div className="card liability-form-card">
+      <div className="card">
         <h3>Add Liability</h3>
 
         <p className="section-description">
@@ -633,7 +634,7 @@ export default function LiabilitySection() {
         </p>
 
         {formError && (
-          <div className="form-error" role="alert">
+          <div className="form-error" role="alert" style={{ color: "#dc2626", marginTop: 12 }}>
             {formError}
           </div>
         )}
@@ -795,7 +796,7 @@ export default function LiabilitySection() {
 
       {/* LIABILITY REGISTER */}
 
-      <div className="card liability-register-card">
+      <div style={{ marginTop: 24 }}>
         <div className="register-heading">
           <div>
             <h3>Liability Register</h3>
@@ -811,24 +812,35 @@ export default function LiabilitySection() {
 
         {/* FILTERS */}
 
-        <div className="liability-filter-bar">
+        <div
+          className="liability-filter-bar"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+            gap: 20,
+            marginBottom: 20,
+            alignItems: "end"
+          }}
+        >
           <div className="filter-field search-filter">
-            <label htmlFor="liability-search">Search</label>
+            <label htmlFor="liability-search" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Search Liabilities</label>
             <input
               id="liability-search"
               type="search"
               value={searchTerm}
               onChange={event => setSearchTerm(event.target.value)}
               placeholder="Name, owner, institution, ID..."
+              style={{ width: "100%", boxSizing: "border-box" }}
             />
           </div>
 
           <div className="filter-field">
-            <label htmlFor="liability-owner-filter">Owner</label>
+            <label htmlFor="liability-owner-filter" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Filter by Owner</label>
             <select
               id="liability-owner-filter"
               value={ownerFilter}
               onChange={event => setOwnerFilter(event.target.value)}
+              style={{ width: "100%", boxSizing: "border-box" }}
             >
               <option value={ALL_FILTER}>All Owners</option>
 
@@ -845,11 +857,12 @@ export default function LiabilitySection() {
           </div>
 
           <div className="filter-field">
-            <label htmlFor="liability-category-filter">Category</label>
+            <label htmlFor="liability-category-filter" style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>Filter by Category</label>
             <select
               id="liability-category-filter"
               value={categoryFilter}
               onChange={event => setCategoryFilter(event.target.value)}
+              style={{ width: "100%", boxSizing: "border-box" }}
             >
               <option value={ALL_FILTER}>All Categories</option>
 
@@ -1184,370 +1197,13 @@ export default function LiabilitySection() {
         )}
 
         {editError && (
-          <div className="form-error edit-form-error" role="alert">
+          <div className="form-error edit-form-error" role="alert" style={{ color: "#dc2626", marginTop: 12 }}>
             {editError}
           </div>
         )}
       </div>
 
-      {/* COMPONENT-SCOPED STYLES */}
 
-      <style jsx>{`
-        .liability-section {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-          min-width: 0;
-        }
-
-        .section-description {
-          margin: 6px 0 12px;
-          line-height: 1.5;
-          opacity: 0.8;
-        }
-
-        .summary-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 14px;
-        }
-
-        .summary-card {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 8px;
-          min-width: 0;
-          padding: 18px;
-        }
-
-        .summary-label {
-          font-size: 0.9rem;
-          line-height: 1.4;
-          opacity: 0.8;
-        }
-
-        .summary-value {
-          font-size: clamp(1.15rem, 2vw, 1.65rem);
-          line-height: 1.3;
-          overflow-wrap: anywhere;
-        }
-
-        .summary-description {
-          font-size: 0.8rem;
-          line-height: 1.4;
-          opacity: 0.7;
-        }
-
-        .liability-form-card,
-        .liability-allocation-card,
-        .liability-register-card {
-          min-width: 0;
-          padding: 18px;
-        }
-
-        .liability-form-card h3,
-        .liability-allocation-card h3,
-        .liability-register-card h3 {
-          margin-top: 0;
-        }
-
-        .form-grid {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 16px;
-        }
-
-        .form-grid > div,
-        .filter-field {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          min-width: 0;
-        }
-
-        .form-grid label,
-        .filter-field label {
-          font-size: 0.9rem;
-          font-weight: 600;
-        }
-
-        .form-grid input,
-        .form-grid select,
-        .filter-field input,
-        .filter-field select,
-        .liability-table input,
-        .liability-table select {
-          box-sizing: border-box;
-          width: 100%;
-          min-width: 0;
-          padding: 9px 10px;
-          font: inherit;
-        }
-
-        .card-actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px;
-          margin-top: 16px;
-        }
-
-        .card-actions button,
-        .action-buttons button {
-          padding: 8px 12px;
-          font: inherit;
-          cursor: pointer;
-        }
-
-        .card-actions button:disabled {
-          cursor: not-allowed;
-          opacity: 0.5;
-        }
-
-        .form-error {
-          margin: 10px 0 14px;
-          padding: 10px 12px;
-          border: 1px solid #dc2626;
-          border-radius: 6px;
-          color: #b91c1c;
-          background: rgba(220, 38, 38, 0.07);
-        }
-
-        .category-allocation-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .category-allocation-item {
-          display: flex;
-          flex-direction: column;
-          gap: 7px;
-        }
-
-        .category-allocation-heading {
-          display: flex;
-          justify-content: space-between;
-          align-items: baseline;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-
-        .category-allocation-name {
-          font-weight: 600;
-        }
-
-        .category-allocation-value {
-          text-align: right;
-          font-variant-numeric: tabular-nums;
-        }
-
-        .category-allocation-percentage {
-          opacity: 0.7;
-          font-size: 0.9em;
-        }
-
-        .category-allocation-track {
-          width: 100%;
-          height: 9px;
-          overflow: hidden;
-          border-radius: 999px;
-          background: rgba(127, 127, 127, 0.2);
-        }
-
-        .category-allocation-bar {
-          height: 100%;
-          border-radius: inherit;
-          background: var(--accent-color, #64748b);
-          transition: width 180ms ease;
-        }
-
-        .register-heading {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-
-        .register-count {
-          font-size: 0.9rem;
-          opacity: 0.75;
-          padding-top: 4px;
-        }
-
-        .liability-filter-bar {
-          display: grid;
-          grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(150px, 1fr)) auto;
-          align-items: end;
-          gap: 12px;
-          margin: 16px 0;
-        }
-
-        .filter-actions {
-          display: flex;
-          align-items: end;
-        }
-
-        .filter-actions button {
-          min-height: 38px;
-          padding: 8px 12px;
-          font: inherit;
-          cursor: pointer;
-          white-space: nowrap;
-        }
-
-        .liability-export-actions {
-          margin: 12px 0 16px;
-        }
-
-        .table-scroll-wrapper {
-          width: 100%;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-        }
-
-        .liability-table {
-          width: 100%;
-          min-width: 1500px;
-          border-collapse: collapse;
-        }
-
-        .liability-table th,
-        .liability-table td {
-          padding: 10px;
-          vertical-align: middle;
-          text-align: left;
-        }
-
-        .liability-table th {
-          white-space: nowrap;
-        }
-
-        .liability-table td {
-          overflow-wrap: anywhere;
-        }
-
-        .liability-table .numeric-cell {
-          text-align: right;
-          font-variant-numeric: tabular-nums;
-          white-space: nowrap;
-        }
-
-        .liability-table input,
-        .liability-table select {
-          min-width: 105px;
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 6px;
-          flex-wrap: wrap;
-        }
-
-        .valuation-status {
-          display: inline-block;
-          padding: 4px 8px;
-          border-radius: 999px;
-          font-size: 0.78rem;
-          line-height: 1.4;
-          font-weight: 600;
-          white-space: nowrap;
-        }
-
-        .valuation-current {
-          color: #166534;
-          background: #dcfce7;
-        }
-
-        .valuation-stale,
-        .valuation-missing {
-          color: #92400e;
-          background: #fef3c7;
-        }
-
-        .valuation-future {
-          color: #9f1239;
-          background: #ffe4e6;
-        }
-
-        .empty-state {
-          padding: 28px 16px;
-          text-align: center;
-          border: 1px dashed rgba(127, 127, 127, 0.4);
-          border-radius: 8px;
-        }
-
-        .empty-state h4 {
-          margin: 0 0 8px;
-        }
-
-        .empty-state p {
-          margin: 0;
-          line-height: 1.5;
-          opacity: 0.8;
-        }
-
-        .edit-form-error {
-          margin-top: 16px;
-        }
-
-        @media (max-width: 1000px) {
-          .summary-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .form-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .liability-filter-bar {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .filter-actions {
-            align-items: stretch;
-          }
-        }
-
-        @media (max-width: 600px) {
-          .summary-grid,
-          .form-grid,
-          .liability-filter-bar {
-            grid-template-columns: minmax(0, 1fr);
-          }
-
-          .liability-form-card,
-          .liability-allocation-card,
-          .liability-register-card {
-            padding: 12px;
-          }
-
-          .summary-card {
-            padding: 14px;
-          }
-
-          .category-allocation-heading {
-            align-items: flex-start;
-            flex-direction: column;
-            gap: 4px;
-          }
-
-          .category-allocation-value {
-            text-align: left;
-          }
-
-          .register-heading {
-            flex-direction: column;
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .category-allocation-bar {
-            transition: none;
-          }
-        }
-      `}</style>
     </section>
   );
 }
