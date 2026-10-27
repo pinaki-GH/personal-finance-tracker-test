@@ -16,7 +16,7 @@ const LIABILITY_CATEGORIES = [
 
 const ALL_FILTER = "All";
 const UNASSIGNED_FILTER = "__UNASSIGNED__";
-const STALE_VALUATION_DAYS = 365;
+const STALE_VALUATION_DAYS = 90;
 
 type Liability = {
   liabilityName: string;
@@ -564,9 +564,7 @@ export default function LiabilitySection() {
         <div className="card">
           <h3>Valuation Updates</h3>
           <p style={{ fontSize: 24, fontWeight: 700, margin: 0, color: liabilitiesNeedingValuation > 0 ? "#b45309" : "inherit" }}>{liabilitiesNeedingValuation}</p>
-          <span className="summary-description">
-            Missing, future-dated, or older than {STALE_VALUATION_DAYS} days
-          </span>
+          <small>Missing, future-dated, or older than {STALE_VALUATION_DAYS} days</small>
         </div>
       </div>
 
@@ -933,21 +931,54 @@ export default function LiabilitySection() {
             </p>
           </div>
         ) : (
-          <div className="table-scroll-wrapper">
-            <table className="data-table wide-table liability-table">
+          <div
+            className="table-scroll-wrapper liability-table-scroll"
+            role="region"
+            aria-label="Liability register table"
+            tabIndex={0}
+            style={{
+              width: "100%",
+              maxWidth: "100%",
+              maxHeight: 420,
+              overflowY: "auto",
+              overflowX: "hidden",
+            }}
+          >
+            <table
+              className="data-table liability-table"
+              style={{
+                width: "100%",
+                minWidth: 0,
+                tableLayout: "fixed",
+                marginTop: 0,
+              }}
+            >
+              <colgroup>
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "8%" }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th>Liability Name</th>
-                  <th>Category</th>
-                  <th>Commencement Date</th>
-                  <th className="numeric-cell">Outstanding Value</th>
-                  <th>Value Record Date</th>
-                  <th>Valuation Status</th>
-                  <th>Liability ID</th>
-                  <th>ID Description</th>
-                  <th>Owner</th>
-                  <th>Institution</th>
-                  <th>Actions</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Liability Name</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Category</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Commencement Date</th>
+                  <th className="numeric-cell" style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Outstanding Value</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Value Record Date</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Valuation Status</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Liability ID</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>ID Description</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Owner</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Institution</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Actions</th>
                 </tr>
               </thead>
 
