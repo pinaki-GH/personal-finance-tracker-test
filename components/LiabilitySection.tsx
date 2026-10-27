@@ -932,51 +932,30 @@ export default function LiabilitySection() {
           </div>
         ) : (
           <div
-            className="table-scroll-wrapper liability-table-scroll"
+            className="table-scroll-wrapper"
             role="region"
-            aria-label="Liability register table"
+            aria-label="Liability register table; scroll horizontally to view all columns"
             tabIndex={0}
             style={{
               width: "100%",
               maxWidth: "100%",
-              maxHeight: 420,
-              overflowY: "auto",
-              overflowX: "hidden",
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
             }}
           >
-            <table
-              className="data-table liability-table"
-              style={{
-                width: "100%",
-                minWidth: 0,
-                tableLayout: "fixed",
-                marginTop: 0,
-              }}
-            >
-              <colgroup>
-                <col style={{ width: "11%" }} />
-                <col style={{ width: "9%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "11%" }} />
-                <col style={{ width: "11%" }} />
-                <col style={{ width: "9%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "9%" }} />
-              </colgroup>
+            <table className="data-table wide-table" style={{ minWidth: 1050 }}>
               <thead>
                 <tr>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Liability Name</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Category</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Commencement Date</th>
-                  <th className="numeric-cell" style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Outstanding Value</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Value Record Date</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Liability ID</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>ID Description</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Owner</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Institution</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Actions</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Liability Name</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Category</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Commencement Date</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Outstanding Value</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value Record Date</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Liability ID</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>ID Description</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Owner</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Institution</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Actions</th>
                 </tr>
               </thead>
 
@@ -1130,19 +1109,17 @@ export default function LiabilitySection() {
                           </td>
 
                           <td className="actions">
-                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                              <button
+                            <button
                                 type="button"
                                 className="primary"
                                 onClick={saveEdit}
                               >
                                 Save
-                              </button>
+                            </button>
 
-                              <button type="button" onClick={cancelEdit}>
-                                Cancel
-                              </button>
-                            </div>
+                            <button type="button" onClick={cancelEdit}>
+                              Cancel
+                            </button>
                           </td>
                         </>
                       ) : (
@@ -1186,22 +1163,20 @@ export default function LiabilitySection() {
                           <td>{liability.institution || "—"}</td>
 
                           <td className="actions">
-                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                              <button
+                            <button
                                 type="button"
                                 onClick={() => startEdit(originalIndex)}
                               >
                                 Edit
-                              </button>
+                            </button>
 
-                              <button
-                                type="button"
-                                className="danger"
-                                onClick={() => deleteLiability(originalIndex)}
-                              >
-                                Delete
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => deleteLiability(originalIndex)}
+                            >
+                              Delete
+                            </button>
                           </td>
                         </>
                       )}
