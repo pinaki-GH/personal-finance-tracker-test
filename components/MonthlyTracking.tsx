@@ -201,7 +201,7 @@ export default function MonthlyTracking() {
             {selectedSnapshot.assets.length === 0 ? <p>No assets were recorded in this snapshot.</p> : (
               <div className="table-scroll-wrapper" role="region" aria-label="Snapshot assets" tabIndex={0}>
                 <table className="data-table" style={{ minWidth: 600 }}>
-                  <thead><tr><th>Asset</th><th>Category</th><th>Value</th><th>Value record date</th></tr></thead>
+                  <thead><tr><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Asset Name</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Category</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value record date</th></tr></thead>
                   <tbody>{selectedSnapshot.assets.map((asset: any, index: number) => (
                     <tr key={`${asset.assetId || asset.assetName || "asset"}-${index}`}>
                       <td>{asset.assetName || "Unnamed asset"}</td>
