@@ -907,16 +907,16 @@ setFormError("");
           <table className="data-table wide-table" style={{ minWidth: 1050 }}>
             <thead>
               <tr>
-                <th>Asset Name</th>
-                <th>Category</th>
-                <th>Purchase Date</th>
-                <th>Asset Value</th>
-                <th>Value Record Date</th>
-                <th>Asset ID</th>
-                <th>Asset ID Description</th>
-                <th>Owner</th>
-                <th>Institution</th>
-                <th>Actions</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Asset Name</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Category</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Purchase Date</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Asset Value</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value Record Date</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Asset ID</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Asset ID Description</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Owner</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Institution</th>
+                <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Actions</th>
               </tr>
             </thead>
 
