@@ -1144,14 +1144,24 @@ export default function LiabilitySection() {
                           </td>
 
                           <td>
-                            <div>{formatDate(liability.valueRecordDate) || "—"}</div>
-                            <small
-                              className={valuationStatus.className}
-                              title={valuationStatus.description}
-                              style={{ display: "block", marginTop: 4, overflowWrap: "anywhere" }}
-                            >
-                              {valuationStatus.label}
-                            </small>
+                            <div>
+                              {formatDate(liability.valueRecordDate) || "—"}
+                            </div>
+
+                            {needsValuationUpdate(liability) && (
+                              <small
+                                title={valuationStatus.description}
+                                style={{
+                                  display: "block",
+                                  color: "#b45309",
+                                  marginTop: 4
+                                }}
+                              >
+                                {liability.valueRecordDate
+                                  ? "Update recommended"
+                                  : "Date missing"}
+                              </small>
+                            )}
                           </td>
 
                           <td>{liability.liabilityId || "—"}</td>
