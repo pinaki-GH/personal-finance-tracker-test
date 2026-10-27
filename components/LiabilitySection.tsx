@@ -1117,7 +1117,7 @@ export default function LiabilitySection() {
                                 Save
                             </button>
 
-                            <button type="button" onClick={cancelEdit}>
+                            <button type="button" onClick={cancelEdit} style={{ marginLeft: 8 }}>
                               Cancel
                             </button>
                           </td>
