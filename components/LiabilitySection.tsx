@@ -16,7 +16,7 @@ const LIABILITY_CATEGORIES = [
 
 const ALL_FILTER = "All";
 const UNASSIGNED_FILTER = "__UNASSIGNED__";
-const STALE_VALUATION_DAYS = 90;
+const STALE_VALUATION_DAYS = 365;
 
 type Liability = {
   liabilityName: string;
@@ -564,7 +564,9 @@ export default function LiabilitySection() {
         <div className="card">
           <h3>Valuation Updates</h3>
           <p style={{ fontSize: 24, fontWeight: 700, margin: 0, color: liabilitiesNeedingValuation > 0 ? "#b45309" : "inherit" }}>{liabilitiesNeedingValuation}</p>
-          <small>Missing, future-dated, or older than {STALE_VALUATION_DAYS} days</small>
+          <span className="summary-description">
+            Missing, future-dated, or older than {STALE_VALUATION_DAYS} days
+          </span>
         </div>
       </div>
 
@@ -781,7 +783,7 @@ export default function LiabilitySection() {
           </div>
         </div>
 
-        <div className="card-actions">
+        <div className="card-actions" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10, marginTop: 20 }}>
           <button className="primary" type="button" onClick={addLiability}>
             Add Liability
           </button>
@@ -802,15 +804,17 @@ export default function LiabilitySection() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: 12,
-                marginBottom: 12
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
+                gap: 20,
+                alignItems: "end",
+                marginBottom: 20
               }}
             >
-              <div>
-                <label htmlFor="liability-search">Search Liabilities</label>
+              <div style={{ minWidth: 0 }}>
+                <label htmlFor="liability-search" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>Search Liabilities</label>
                 <input
                   id="liability-search"
+                  style={{ width: "100%", boxSizing: "border-box", margin: 0 }}
                   type="search"
                   value={searchTerm}
                   onChange={event => setSearchTerm(event.target.value)}
@@ -818,10 +822,11 @@ export default function LiabilitySection() {
                 />
               </div>
 
-              <div>
-                <label htmlFor="liability-owner-filter">Filter by Owner</label>
+              <div style={{ minWidth: 0 }}>
+                <label htmlFor="liability-owner-filter" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>Filter by Owner</label>
                 <select
                   id="liability-owner-filter"
+                  style={{ width: "100%", boxSizing: "border-box", margin: 0 }}
                   value={ownerFilter}
                   onChange={event => setOwnerFilter(event.target.value)}
                 >
@@ -837,10 +842,11 @@ export default function LiabilitySection() {
                 </select>
               </div>
 
-              <div>
-                <label htmlFor="liability-category-filter">Filter by Category</label>
+              <div style={{ minWidth: 0 }}>
+                <label htmlFor="liability-category-filter" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>Filter by Category</label>
                 <select
                   id="liability-category-filter"
+                  style={{ width: "100%", boxSizing: "border-box", margin: 0 }}
                   value={categoryFilter}
                   onChange={event => setCategoryFilter(event.target.value)}
                 >
@@ -872,6 +878,7 @@ export default function LiabilitySection() {
               <div
                 style={{
                   display: "flex",
+                  alignItems: "center",
                   flexWrap: "wrap",
                   gap: 8
                 }}
@@ -908,7 +915,7 @@ export default function LiabilitySection() {
 
       {/* TABLE */}
 
-      <div className="card">
+      <div className="card liability-register-card">
         {liabilities.length === 0 ? (
           <div className="empty-state">
             <h4>No liabilities recorded yet</h4>
@@ -1110,7 +1117,7 @@ export default function LiabilitySection() {
                           </td>
 
                           <td className="actions">
-                            <div className="action-buttons">
+                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                               <button
                                 type="button"
                                 className="primary"
@@ -1168,7 +1175,7 @@ export default function LiabilitySection() {
                           <td>{liability.institution || "—"}</td>
 
                           <td className="actions">
-                            <div className="action-buttons">
+                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                               <button
                                 type="button"
                                 onClick={() => startEdit(originalIndex)}
