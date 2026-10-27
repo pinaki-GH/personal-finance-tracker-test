@@ -954,17 +954,16 @@ export default function LiabilitySection() {
               }}
             >
               <colgroup>
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "8%" }} />
+                <col style={{ width: "11%" }} />
                 <col style={{ width: "9%" }} />
                 <col style={{ width: "10%" }} />
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "11%" }} />
                 <col style={{ width: "9%" }} />
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "8%" }} />
                 <col style={{ width: "10%" }} />
                 <col style={{ width: "10%" }} />
                 <col style={{ width: "10%" }} />
-                <col style={{ width: "8%" }} />
+                <col style={{ width: "9%" }} />
               </colgroup>
               <thead>
                 <tr>
@@ -973,7 +972,6 @@ export default function LiabilitySection() {
                   <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Commencement Date</th>
                   <th className="numeric-cell" style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Outstanding Value</th>
                   <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Value Record Date</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Valuation Status</th>
                   <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Liability ID</th>
                   <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>ID Description</th>
                   <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Owner</th>
@@ -1079,22 +1077,6 @@ export default function LiabilitySection() {
                           </td>
 
                           <td>
-                            <span
-                              className={
-                                getValuationStatus(
-                                  editForm.valueRecordDate
-                                ).className
-                              }
-                            >
-                              {
-                                getValuationStatus(
-                                  editForm.valueRecordDate
-                                ).label
-                              }
-                            </span>
-                          </td>
-
-                          <td>
                             <input
                               aria-label="Liability ID"
                               type="text"
@@ -1185,16 +1167,14 @@ export default function LiabilitySection() {
                           </td>
 
                           <td>
-                            {formatDate(liability.valueRecordDate) || "—"}
-                          </td>
-
-                          <td>
-                            <span
+                            <div>{formatDate(liability.valueRecordDate) || "—"}</div>
+                            <small
                               className={valuationStatus.className}
                               title={valuationStatus.description}
+                              style={{ display: "block", marginTop: 4, overflowWrap: "anywhere" }}
                             >
                               {valuationStatus.label}
-                            </span>
+                            </small>
                           </td>
 
                           <td>{liability.liabilityId || "—"}</td>
