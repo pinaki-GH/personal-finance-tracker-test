@@ -37,6 +37,7 @@ type Expense = {
   owner: string;
   expenseDate: Date | null;
   recurring: RecurringType;
+  recurringKey?: string;
 };
 
 type StoredExpense = Omit<Expense, "expenseDate"> & {
@@ -64,6 +65,8 @@ export default function ExpenseSection() {
   const [editForm, setEditForm] = useState<Expense>(emptyForm);
 
   const [budgets, setBudgets] = useState<BudgetStore>({});
+  const [formError, setFormError] = useState("");
+  const [editError, setEditError] = useState("");
 
   // ================= LOAD =================
   useEffect(() => {
@@ -72,7 +75,9 @@ export default function ExpenseSection() {
     const hydrated = stored.map(e => ({
       ...e,
       recurring: e.recurring ?? "None",
-      expenseDate: e.expenseDate ? new Date(e.expenseDate) : null
+      expenseDate: e.expenseDate && !Number.isNaN(new Date(e.expenseDate).getTime())
+        ? new Date(e.expenseDate)
+        : null
     }));
 
     setExpenses(hydrated);
@@ -106,16 +111,58 @@ export default function ExpenseSection() {
     saveData("expenseBudgets", updated);
   };
 
-  const formatDate = (d: Date | null) =>
-    d ? d.toISOString().split("T")[0] : "";
+  // Use local calendar components for date-only inputs to avoid timezone day shifts.
+  const formatDate = (d: Date | null) => {
+    if (!d || Number.isNaN(d.getTime())) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseDateInput = (value: string): Date | null => {
+    if (!value) return null;
+    const [year, month, day] = value.split("-").map(Number);
+    if (!year || !month || !day) return null;
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+      ? date
+      : null;
+  };
 
   const getMonthKey = (d: Date | null) =>
-    d ? d.toISOString().slice(0, 7) : "";
+    d && !Number.isNaN(d.getTime())
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      : "";
+
+  const validateExpense = (expense: Expense): string => {
+    if (!expense.description.trim()) return "Enter an expense description.";
+    const amount = Number(expense.amount);
+    if (!expense.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
+      return "Enter an amount greater than zero.";
+    }
+    if (!expense.category) return "Select an expense category.";
+    if (!expense.expenseDate || Number.isNaN(expense.expenseDate.getTime())) {
+      return "Select a valid expense date.";
+    }
+    return "";
+  };
 
   // ================= ADD =================
   const addExpense = () => {
-    if (!form.description || !form.amount || !form.category) return;
-    persist([...expenses, form]);
+    const error = validateExpense(form);
+    if (error) {
+      setFormError(error);
+      return;
+    }
+    setFormError("");
+    const cleanExpense = {
+      ...form,
+      description: form.description.trim(),
+      amount: String(Number(form.amount)),
+      recurringKey: form.recurring === "Monthly" ? `rec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : undefined
+    };
+    persist([...expenses, cleanExpense]);
     setForm({ ...emptyForm, expenseDate: new Date() });
   };
 
@@ -124,12 +171,26 @@ export default function ExpenseSection() {
     const originalIndex = expenses.indexOf(filteredExpenses[filteredIndex]);
     setEditIndex(originalIndex);
     setEditForm(expenses[originalIndex]);
+    setEditError("");
   };
 
   const saveEdit = () => {
     if (editIndex === null) return;
+    const error = validateExpense(editForm);
+    if (error) {
+      setEditError(error);
+      return;
+    }
+    setEditError("");
     const updated = [...expenses];
-    updated[editIndex] = editForm;
+    updated[editIndex] = {
+      ...editForm,
+      description: editForm.description.trim(),
+      amount: String(Number(editForm.amount)),
+      recurringKey: editForm.recurring === "Monthly"
+        ? (editForm.recurringKey || `rec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+        : undefined
+    };
     persist(updated);
     setEditIndex(null);
   };
@@ -174,32 +235,39 @@ export default function ExpenseSection() {
         100;
 
   // ================= RECURRING =================
+  // A recurring series shares a stable key across occurrences. A month can contain
+  // at most one occurrence for each key, making this effect safe to rerun.
   useEffect(() => {
-    if (!monthFilter) return;
+    if (!monthFilter || expenses.length === 0) return;
 
-    const newExpenses = [...expenses];
     let changed = false;
+    const keyedExpenses = expenses.map(e => {
+      if (e.recurring !== "Monthly" || e.recurringKey) return e;
+      changed = true;
+      return {
+        ...e,
+        recurringKey: `rec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      };
+    });
 
-    expenses.forEach(e => {
-      if (e.recurring === "Monthly") {
-        const exists = expenses.some(
-          ex =>
-            ex.description === e.description &&
-            getMonthKey(ex.expenseDate) === monthFilter
-        );
+    const series = keyedExpenses.filter(e => e.recurring === "Monthly" && e.recurringKey);
+    const monthKeysPresent = new Set(
+      keyedExpenses
+        .filter(e => e.recurringKey && getMonthKey(e.expenseDate) === monthFilter)
+        .map(e => e.recurringKey as string)
+    );
+    const occurrences: Expense[] = [];
 
-        if (!exists) {
-          newExpenses.push({
-            ...e,
-            expenseDate: new Date(monthFilter + "-01")
-          });
-          changed = true;
-        }
+    series.forEach(e => {
+      const key = e.recurringKey as string;
+      if (!monthKeysPresent.has(key)) {
+        occurrences.push({ ...e, expenseDate: parseDateInput(`${monthFilter}-01`) });
+        monthKeysPresent.add(key);
       }
     });
 
-    if (changed) persist(newExpenses);
-  }, [monthFilter]);
+    if (changed || occurrences.length > 0) persist([...keyedExpenses, ...occurrences]);
+  }, [monthFilter, expenses]);
 
   // ================= CATEGORY DATA =================
   const categoryActuals = useMemo(() => {
@@ -321,9 +389,7 @@ export default function ExpenseSection() {
                 onChange={e =>
                   setForm({
                     ...form,
-                    expenseDate: e.target.value
-                      ? new Date(e.target.value)
-                      : null
+                    expenseDate: parseDateInput(e.target.value)
                   })
                 }
               />
@@ -341,6 +407,7 @@ export default function ExpenseSection() {
               </select>
             </div>
 
+            {formError && <p role="alert" style={{ color: "#b91c1c", marginTop: 10 }}>{formError}</p>}
             <div className="card-actions">
               <button className="primary" onClick={addExpense}>
                 Add Expense
@@ -416,9 +483,7 @@ export default function ExpenseSection() {
                                 onChange={ev =>
                                   setEditForm({
                                     ...editForm,
-                                    expenseDate: ev.target.value
-                                      ? new Date(ev.target.value)
-                                      : null
+                                    expenseDate: parseDateInput(ev.target.value)
                                   })
                                 }
                               />
@@ -449,8 +514,9 @@ export default function ExpenseSection() {
                               />
                             </td>
                             <td>
+                              {editError && <div role="alert" style={{ color: "#b91c1c", marginBottom: 6 }}>{editError}</div>}
                               <button onClick={saveEdit}>Save</button>
-                              <button onClick={() => setEditIndex(null)}>
+                              <button onClick={() => { setEditIndex(null); setEditError(""); }}>
                                 Cancel
                               </button>
                             </td>
