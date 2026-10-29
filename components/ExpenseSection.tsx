@@ -461,7 +461,7 @@ export default function ExpenseSection() {
         {[
           { label: "SPENT THIS MONTH", value: money(total), note: `${monthExpenses.length} saved transaction${monthExpenses.length === 1 ? "" : "s"}` },
           { label: "MONTHLY BUDGET", value: money(budgetTotal), note: budgetTotal ? `${money(budgetTotal - total)} ${budgetTotal >= total ? "remaining" : "over budget"}` : "Set category budgets" },
-          { label: "VS PREVIOUS MONTH", value: previousTotal ? `${total >= previousTotal ? "+" : "−"}${Math.abs(((total - previousTotal) / previousTotal) * 100).toFixed(1)}%` : "—", note: previousTotal ? `${money(previousTotal)} previous spend` : "No previous-month spend" },
+          { label: "vs PREVIOUS MONTH", value: previousTotal ? `${total >= previousTotal ? "+" : "−"}${Math.abs(((total - previousTotal) / previousTotal) * 100).toFixed(1)}%` : "—", note: previousTotal ? `${money(previousTotal)} previous spend` : "No previous-month spend" },
           { label: "RECURRING SCHEDULES", value: String(applicableRecurringSchedules.length), note: "Active this reporting month" },
         ].map((item) => (
           <div key={item.label} style={{ ...cardStyle, padding: 17 }}>
@@ -512,7 +512,7 @@ export default function ExpenseSection() {
           <div className="expense-card" style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start", marginBottom: 16 }}>
               <div>
-                <h3 style={{ margin: "0 0 4px", fontSize: 17 }}>Spending by category</h3>
+                <h3 style={{ margin: "0 0 4px", fontSize: 17 }}>Spending by Category</h3>
                 <p style={{ color: "#718096", fontSize: 13, margin: 0 }}>{monthLabel(monthFilter)} · saved transactions only</p>
               </div>
               <button style={buttonStyle} onClick={() => setActiveTab("reports")}>Full report →</button>
@@ -540,7 +540,7 @@ export default function ExpenseSection() {
           </div>
 
           <div className="expense-card" style={cardStyle}>
-            <h3 style={{ margin: "0 0 4px", fontSize: 17 }}>Six-month spending trend</h3>
+            <h3 style={{ margin: "0 0 4px", fontSize: 17 }}>Six-month Spending Trend</h3>
             <p style={{ color: "#718096", fontSize: 13, margin: "0 0 20px" }}>Monthly totals through {monthLabel(monthFilter)}</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8, alignItems: "end", minHeight: 170 }}>
               {monthlyTrend.map((item) => {
@@ -562,7 +562,7 @@ export default function ExpenseSection() {
         <div className="expense-card" style={cardStyle}>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: 17 }}>Recent expenses</h3>
+              <h3 style={{ margin: 0, fontSize: 17 }}>Recent Expenses</h3>
               <p style={{ color: "#718096", fontSize: 13, margin: "5px 0 0" }}>Latest saved transactions for {monthLabel(monthFilter)}.</p>
             </div>
             <button style={buttonStyle} onClick={() => setActiveTab("list")}>All transactions →</button>
@@ -575,7 +575,7 @@ export default function ExpenseSection() {
         <div className="expense-card" style={{ ...cardStyle, background: "#f7faf8" }}>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
             <div>
-              <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Monthly snapshot</h3>
+              <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Monthly Snapshot</h3>
               <p style={{ color: "#718096", fontSize: 13, margin: 0 }}>A quick summary of spending and planning for {monthLabel(monthFilter)}.</p>
             </div>
             <span style={{ fontSize: 12, color: "#526174" }}>{recurringExpenses.length} recurring schedule{recurringExpenses.length === 1 ? "" : "s"} saved</span>
@@ -594,7 +594,7 @@ export default function ExpenseSection() {
         </div>
 
         <div className="expense-card" style={cardStyle}>
-          <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Quick add expense</h3>
+          <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Quick Add Expense</h3>
           <p style={{ color: "#718096", fontSize: 13, margin: "0 0 16px" }}>Only saved transactions count as actual spending.</p>
           {formFields(form, setForm)}
           {formError && <p role="alert" style={{ color: "#b42318", fontSize: 13 }}>{formError}</p>}
@@ -604,7 +604,7 @@ export default function ExpenseSection() {
 
       {activeTab === "list" && <div className="expense-card" style={cardStyle}>
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div><h3 style={{ margin: 0, fontSize: 18 }}>Expense list</h3><p style={{ color: "#718096", margin: "5px 0 0", fontSize: 13 }}>{filteredExpenses.length} transaction{filteredExpenses.length === 1 ? "" : "s"} · {money(filteredExpenses.reduce((s,e)=>s+(Number(e.amount)||0),0))} shown</p></div>
+          <div><h3 style={{ margin: 0, fontSize: 18 }}>Expense List</h3><p style={{ color: "#718096", margin: "5px 0 0", fontSize: 13 }}>{filteredExpenses.length} transaction{filteredExpenses.length === 1 ? "" : "s"} · {money(filteredExpenses.reduce((s,e)=>s+(Number(e.amount)||0),0))} shown</p></div>
           <button style={buttonStyle} onClick={exportMonth}>Export month to Excel ↓</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 16 }}>
@@ -692,7 +692,7 @@ export default function ExpenseSection() {
       </div>}
 
       {activeTab === "recurring" && <div className="expense-card" style={cardStyle}>
-        <h3 style={{ margin: 0, fontSize: 18 }}>Recurring schedules</h3>
+        <h3 style={{ margin: 0, fontSize: 18 }}>Recurring Schedules</h3>
         <p style={{ color: "#718096", fontSize: 13, margin: "5px 0 16px" }}>These entries are not automatically copied into future months. Add a new transaction only after confirming that payment happened.</p>
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, marginBottom: 18 }}>
           <h4 style={{ margin: "0 0 12px" }}>{editingScheduleId ? "Edit schedule" : "Add a recurring schedule"}</h4>
@@ -707,7 +707,7 @@ export default function ExpenseSection() {
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}><button style={primaryStyle} onClick={saveSchedule}>{editingScheduleId ? "Save changes" : "＋ Save schedule"}</button>{editingScheduleId && <button style={buttonStyle} onClick={()=>{setEditingScheduleId(null);setScheduleDraft({id:"",description:"",amount:"",category:"",owner:"",frequency:"Monthly",startDate:today(),endDate:"",paused:false,paidOccurrences:[]})}}>Cancel edit</button>}</div>
         </div>
-        <h4 style={{ margin: "0 0 10px" }}>Scheduled payments · {monthLabel(monthFilter)}</h4>
+        <h4 style={{ margin: "0 0 10px" }}>Scheduled Payments · {monthLabel(monthFilter)}</h4>
         {schedules.filter(schedule => {
           // Show a schedule only from the month of its first due date through its optional end date.
           const start = parseDate(schedule.startDate);
@@ -736,10 +736,10 @@ export default function ExpenseSection() {
       </div>}
 
       {activeTab === "reports" && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 16 }}>
-        <div className="expense-card" style={cardStyle}><h3 style={{ margin: "0 0 5px", fontSize: 18 }}>Category breakdown</h3><p style={{ margin: "0 0 16px", color: "#718096", fontSize: 13 }}>{monthLabel(monthFilter)}</p>
+        <div className="expense-card" style={cardStyle}><h3 style={{ margin: "0 0 5px", fontSize: 18 }}>Category Breakdown</h3><p style={{ margin: "0 0 16px", color: "#718096", fontSize: 13 }}>{monthLabel(monthFilter)}</p>
           {categoryTotals.length ? categoryTotals.map(([cat, amount])=><div key={cat} style={{ display: "flex", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #edf1f5", padding: "10px 0", fontSize: 13 }}><span>{cat}<span style={{ color: "#718096", marginLeft: 7 }}>{total ? `${(amount/total*100).toFixed(1)}%` : ""}</span></span><strong>{money(amount)}</strong></div>) : <p style={{ color: "#718096", fontSize: 13 }}>No spending data for this month.</p>}
         </div>
-        <div className="expense-card" style={cardStyle}><h3 style={{ margin: "0 0 5px", fontSize: 18 }}>Month summary</h3><p style={{ margin: "0 0 16px", color: "#718096", fontSize: 13 }}>Saved transaction totals</p>
+        <div className="expense-card" style={cardStyle}><h3 style={{ margin: "0 0 5px", fontSize: 18 }}>Month Summary</h3><p style={{ margin: "0 0 16px", color: "#718096", fontSize: 13 }}>Saved transaction totals</p>
           {[["Current month",total],["Previous month",previousTotal],["Budgeted",budgetTotal],["Difference vs previous",total-previousTotal]].map(([label, amount])=><div key={String(label)} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: "1px solid #edf1f5", fontSize: 13 }}><span style={{ color: "#718096" }}>{label}</span><strong>{money(Number(amount))}</strong></div>)}
           <button style={{ ...primaryStyle, marginTop: 16 }} onClick={exportMonth}>Export transactions to Excel</button>
         </div>
