@@ -70,6 +70,7 @@ export default function ExpenseSection() {
   const [categoryFilter, setCategoryFilter] = useState("All categories");
   const [ownerFilter, setOwnerFilter] = useState("All owners");
   const [notice, setNotice] = useState("");
+  const [showCopyConfirmation, setShowCopyConfirmation] = useState(false);
 
   useEffect(() => {
     const stored = getData<StoredExpense[] | null>("expenses");
@@ -240,10 +241,24 @@ export default function ExpenseSection() {
   };
   const copyPreviousBudget = () => {
     const previous = budgets[previousMonth];
-    if (!previous) { setNotice(`No budget is saved for ${monthLabel(previousMonth)}.`); return; }
-    if (!window.confirm(`Copy ${monthLabel(previousMonth)}'s budget into ${monthLabel(monthFilter)}? This replaces the current month's category budgets.`)) return;
-    persistBudgets({ ...budgets, [monthFilter]: { ...previous } });
-    setNotice("Previous month's budget copied. The two months are now independent.");
+    if (!previous || Object.keys(previous).length === 0) {
+      setNotice(`No budget is saved for ${monthLabel(previousMonth)}.`);
+      return;
+    }
+    setShowCopyConfirmation(true);
+  };
+  const confirmCopyPreviousBudget = () => {
+    const previous = budgets[previousMonth];
+    if (!previous || Object.keys(previous).length === 0) {
+      setShowCopyConfirmation(false);
+      setNotice(`No budget is saved for ${monthLabel(previousMonth)}.`);
+      return;
+    }
+    const nextBudgets = { ...budgets, [monthFilter]: { ...previous } };
+    persistBudgets(nextBudgets);
+    setBudgetDrafts(Object.fromEntries(Object.entries(previous).map(([category, amount]) => [category, String(amount)])));
+    setShowCopyConfirmation(false);
+    setNotice(`Copied ${monthLabel(previousMonth)}'s budget to ${monthLabel(monthFilter)}. The months remain independent.`);
   };
   const exportMonth = () => {
     if (!monthExpenses.length) { setNotice("There are no transactions to export for this month."); return; }
@@ -324,9 +339,9 @@ export default function ExpenseSection() {
           <p style={{ margin: 0, color: "#718096", fontSize: 14 }}>A clear view of where your money goes.</p>
         </div>
         <label style={{ ...labelStyle, minWidth: 190 }}>REPORTING MONTH
-          <select style={fieldStyle} value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}>
-            {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
-          </select>
+          <input style={fieldStyle} type="month" value={monthFilter}
+            onChange={(e) => { if (e.target.value) { setMonthFilter(e.target.value); setNotice(""); } }}
+            aria-label="Choose reporting month and year" />
         </label>
       </header>
 
@@ -492,6 +507,20 @@ export default function ExpenseSection() {
         </div>
       </div>}
       <footer style={{ color: "#8a97a6", fontSize: 11, lineHeight: 1.5 }}>Expense data stays in your existing browser storage keys. Scheduled recurring expenses are not treated as actual spend unless saved as a transaction.</footer>
+      {showCopyConfirmation && (
+        <div role="presentation" onClick={() => setShowCopyConfirmation(false)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(15, 23, 42, 0.45)", display: "grid", placeItems: "center", padding: 20 }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="copy-budget-title" onClick={(e) => e.stopPropagation()} style={{ width: "min(100%, 440px)", background: "#fff", borderRadius: 16, padding: 22, boxShadow: "0 20px 60px rgba(0,0,0,.22)" }}>
+            <h3 id="copy-budget-title" style={{ margin: "0 0 10px", fontSize: 18 }}>Replace this month's budget?</h3>
+            <p style={{ color: "#526174", fontSize: 14, lineHeight: 1.6, margin: "0 0 20px" }}>
+              This copies {monthLabel(previousMonth)}'s saved category budgets into {monthLabel(monthFilter)} and replaces any budgets currently set for that destination month. The source month will not change.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 9 }}>
+              <button style={buttonStyle} onClick={() => setShowCopyConfirmation(false)}>Cancel</button>
+              <button style={primaryStyle} onClick={confirmCopyPreviousBudget}>Copy budget</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
