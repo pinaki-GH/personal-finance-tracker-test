@@ -335,7 +335,7 @@ export default function ExpenseSection() {
       <header style={{ display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ color: "#5d8b78", fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase" }}>PERSONAL FINANCE</div>
-          <h2 style={{ margin: "5px 0", fontSize: 28, lineHeight: 1.2, letterSpacing: "-.04em" }}>Expense tracker</h2>
+          <h2 style={{ margin: "5px 0", fontSize: 28, lineHeight: 1.2, letterSpacing: "-.04em" }}>Expense Tracker</h2>
           <p style={{ margin: 0, color: "#718096", fontSize: 14 }}>A clear view of where your money goes.</p>
         </div>
         <label style={{ ...labelStyle, minWidth: 190 }}>REPORTING MONTH
