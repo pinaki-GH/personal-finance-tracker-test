@@ -105,7 +105,7 @@ const LEGACY_KEYS = new Set([
 export const isValidMonthKey = (value: unknown): value is string =>
   typeof value === "string" && MONTH_RE.test(value);
 
-export const isValidDateOnly = (value: unknown): value is string => {
+export const isValidDateOnly = (value: unknown): boolean => {
   if (typeof value !== "string" || !DATE_RE.test(value)) return false;
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(year, month - 1, day);
