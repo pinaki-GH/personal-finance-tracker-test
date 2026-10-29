@@ -76,7 +76,6 @@ export default function ExpenseSection() {
   const [ownerFilter, setOwnerFilter] = useState("All owners");
   const [notice, setNotice] = useState("");
   const [showCopyConfirmation, setShowCopyConfirmation] = useState(false);
-  const [reportMonths, setReportMonths] = useState<6 | 12>(6);
 
   useEffect(() => {
     const stored = getData<StoredExpense[] | null>("expenses");
@@ -121,6 +120,19 @@ export default function ExpenseSection() {
     setExpenses(next);
   };
   const persistSchedules = (next: RecurringSchedule[]) => { saveData("expenseRecurringSchedules", next); setSchedules(next); };
+  const deleteSchedule = (scheduleId: string) => {
+    // Derive the next list from the current render, persist it, and update React state.
+    // Keep the editor in sync if the schedule being removed was open for editing.
+    const next = schedules.filter((schedule) => schedule.id !== scheduleId);
+    if (next.length === schedules.length) return;
+    saveData("expenseRecurringSchedules", next);
+    setSchedules(next);
+    if (editingScheduleId === scheduleId) {
+      setEditingScheduleId(null);
+      setScheduleDraft({ id: "", description: "", amount: "", category: "", owner: "", frequency: "Monthly", startDate: today(), endDate: "", paused: false, paidOccurrences: [] });
+    }
+    setNotice("Recurring schedule deleted. Existing transactions were kept.");
+  };
   const persistBudgets = (next: BudgetStore) => {
     saveData("expenseBudgets", next);
     setBudgets(next);
@@ -240,56 +252,6 @@ export default function ExpenseSection() {
       return { key, label: date.toLocaleDateString("en-IN", { month: "short" }), spend };
     });
   }, [expenses, monthFilter]);
-  const reportTrend = useMemo(() => {
-    const [year, month] = monthFilter.split("-").map(Number);
-    return Array.from({ length: reportMonths }, (_, index) => {
-      const date = new Date(year, month - reportMonths + index + 1, 1);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      const monthItems = expenses.filter((expense) => monthKey(expense.expenseDate) === key);
-      return {
-        key,
-        label: date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }),
-        spend: monthItems.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0),
-        count: monthItems.length,
-      };
-    });
-  }, [expenses, monthFilter, reportMonths]);
-  const reportTrendMax = Math.max(1, ...reportTrend.map((item) => item.spend));
-  const categoryAnalysis = useMemo(() => {
-    const rows: Record<string, { amount: number; count: number }> = {};
-    monthExpenses.forEach((expense) => {
-      const category = expense.category || "Uncategorized";
-      if (!rows[category]) rows[category] = { amount: 0, count: 0 };
-      rows[category].amount += Number(expense.amount) || 0;
-      rows[category].count += 1;
-    });
-    return Object.entries(rows)
-      .map(([category, values]) => ({
-        category, amount: values.amount, count: values.count,
-        share: total > 0 ? values.amount / total * 100 : 0,
-        average: values.count > 0 ? values.amount / values.count : 0,
-      }))
-      .sort((a, b) => b.amount - a.amount);
-  }, [monthExpenses, total]);
-  const reportTrendTotal = reportTrend.reduce((sum, item) => sum + item.spend, 0);
-  const reportTrendAverage = reportTrend.length ? reportTrendTotal / reportTrend.length : 0;
-  const reportTrendPeak = reportTrend.reduce((peak, item) => item.spend > peak.spend ? item : peak, reportTrend[0]);
-
-  const exportCategorySummary = () => {
-    if (!categoryAnalysis.length) {
-      setNotice("There is no category spending data to export for this month.");
-      return;
-    }
-    exportToExcel(categoryAnalysis.map((item) => ({
-      Month: monthFilter, Category: item.category,
-      "Total Spend": Number(item.amount.toFixed(2)),
-      "Share of Monthly Spend (%)": Number(item.share.toFixed(2)),
-      "Transaction Count": item.count,
-      "Average Transaction": Number(item.average.toFixed(2)),
-    })), `expense-category-summary-${monthFilter}`);
-    setNotice("Category summary exported to Excel.");
-  };
-
   const previousMonthBudgetTotal = Object.values(budgets[previousMonth] || {})
     .reduce((sum, value) => sum + (Number(value) || 0), 0);
   const spendingChange = previousTotal > 0 ? ((total - previousTotal) / previousTotal) * 100 : null;
@@ -741,92 +703,18 @@ export default function ExpenseSection() {
           return <div key={schedule.id} style={{ border: "1px solid #edf1f5", padding: 14, borderRadius: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><strong>{schedule.description}</strong><div style={{ color: "#718096", fontSize: 12, marginTop: 5 }}>{schedule.category} · {schedule.owner || "No owner specified"} · {schedule.frequency}{schedule.paused ? " · Paused" : ""}</div></div><strong>{money(Number(schedule.amount)||0)}</strong></div>
             {schedule.paused ? <p style={{ fontSize: 12, color: "#718096", marginBottom: 0 }}>Schedule paused; no payment reminders shown.</p> : occurrences.length ? <div style={{ display: "grid", gap: 8, marginTop: 12 }}>{occurrences.map(due=>{const paid=schedule.paidOccurrences.includes(due)||expenses.some(e=>(e as Expense & {recurringOccurrence?:string}).recurringOccurrence===`${schedule.id}:${due}`);const overdue=!paid && due<today();return <div key={due} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", background: paid?"#eef8f1":overdue?"#fff1f0":"#f7f9fc", padding: 10, borderRadius: 9 }}><span style={{ fontSize: 13 }}>{due} · <strong style={{ color: paid?"#286348":overdue?"#b42318":"#526174" }}>{paid?"Confirmed":overdue?"Overdue":"Upcoming"}</strong></span>{!paid&&<button style={buttonStyle} onClick={()=>confirmOccurrence(schedule,due)}>Confirm payment</button>}</div>})}</div> : <p style={{ color: "#718096", fontSize: 12, marginBottom: 0 }}>No due dates for this month.</p>}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}><button style={buttonStyle} onClick={()=>{setEditingScheduleId(schedule.id);setScheduleDraft({...schedule})}}>Edit</button><button style={buttonStyle} onClick={()=>persistSchedules(schedules.map(s=>s.id===schedule.id?{...s,paused:!s.paused}:s))}>{schedule.paused?"Resume":"Pause"}</button><button style={{...buttonStyle,color:"#b42318"}} onClick={()=>{if(window.confirm(`Delete recurring schedule “${schedule.description}”? Existing transactions will remain.`))persistSchedules(schedules.filter(s=>s.id!==schedule.id))}}>Delete schedule</button></div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}><button style={buttonStyle} onClick={()=>{setEditingScheduleId(schedule.id);setScheduleDraft({...schedule})}}>Edit</button><button style={buttonStyle} onClick={()=>persistSchedules(schedules.map(s=>s.id===schedule.id?{...s,paused:!s.paused}:s))}>{schedule.paused?"Resume":"Pause"}</button><button style={{...buttonStyle,color:"#b42318"}} onClick={()=>{if(window.confirm(`Delete recurring schedule “${schedule.description}”? Existing transactions will remain.`))deleteSchedule(schedule.id)}}>Delete schedule</button></div>
           </div>})}</div> : <p style={{ color: "#718096", fontSize: 13 }}>No recurring schedules yet. Add one above to track upcoming payments.</p>}
         <div style={{ marginTop: 16, background: "#fff8e8", color: "#7c5b20", padding: 12, borderRadius: 10, fontSize: 12 }}>Only confirmed payments become actual transactions and count toward spending and budgets. Scheduled amounts alone are never counted as actual spend.</div>
       </div>}
 
-      {activeTab === "reports" && <div style={{ display: "grid", gap: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 19 }}>Expense reports</h3>
-            <p style={{ color: "#718096", fontSize: 13, margin: "5px 0 0" }}>{monthLabel(monthFilter)} · detailed analysis of saved transactions</p>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button style={buttonStyle} onClick={exportMonth}>Export monthly transactions</button>
-            <button style={primaryStyle} onClick={exportCategorySummary}>Export category summary</button>
-          </div>
+      {activeTab === "reports" && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 16 }}>
+        <div className="expense-card" style={cardStyle}><h3 style={{ margin: "0 0 5px", fontSize: 18 }}>Category breakdown</h3><p style={{ margin: "0 0 16px", color: "#718096", fontSize: 13 }}>{monthLabel(monthFilter)}</p>
+          {categoryTotals.length ? categoryTotals.map(([cat, amount])=><div key={cat} style={{ display: "flex", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #edf1f5", padding: "10px 0", fontSize: 13 }}><span>{cat}<span style={{ color: "#718096", marginLeft: 7 }}>{total ? `${(amount/total*100).toFixed(1)}%` : ""}</span></span><strong>{money(amount)}</strong></div>) : <p style={{ color: "#718096", fontSize: 13 }}>No spending data for this month.</p>}
         </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-          {[
-            { label: "CATEGORIES USED", value: String(categoryAnalysis.length), note: "Categories with saved transactions" },
-            { label: "AVERAGE TRANSACTION", value: money(monthExpenses.length ? total / monthExpenses.length : 0), note: `${monthExpenses.length} transaction${monthExpenses.length === 1 ? "" : "s"} this month` },
-            { label: "TOP CATEGORY", value: categoryAnalysis[0]?.category || "—", note: categoryAnalysis[0] ? `${categoryAnalysis[0].share.toFixed(1)}% of monthly spend` : "No category spending yet" },
-          ].map((item) => <div key={item.label} style={{ ...cardStyle, padding: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".07em", color: "#718096" }}>{item.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#174b3b", margin: "8px 0 5px", overflowWrap: "anywhere" }}>{item.value}</div>
-            <div style={{ fontSize: 12, color: "#718096" }}>{item.note}</div>
-          </div>)}
-        </div>
-
-        <div className="expense-card" style={cardStyle}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", flexWrap: "wrap", gap: 12 }}>
-            <div>
-              <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Category analysis</h3>
-              <p style={{ margin: 0, color: "#718096", fontSize: 13 }}>Share, transaction frequency, and average amount by category. Select a category to inspect its transactions.</p>
-            </div>
-            <button style={buttonStyle} onClick={exportCategorySummary}>Export this table ↓</button>
-          </div>
-          {categoryAnalysis.length ? <div className="expense-scroll" style={{ marginTop: 14 }}>
-            <table className="expense-table">
-              <thead><tr><th>CATEGORY</th><th style={{ textAlign: "right" }}>TOTAL SPEND</th><th style={{ textAlign: "right" }}>SHARE</th><th style={{ textAlign: "right" }}>TRANSACTIONS</th><th style={{ textAlign: "right" }}>AVERAGE</th><th>ACTION</th></tr></thead>
-              <tbody>{categoryAnalysis.map((item) => <tr key={item.category}>
-                <td style={{ fontWeight: 700 }}>{item.category}</td>
-                <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{money(item.amount)}</td>
-                <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{item.share.toFixed(1)}%</td>
-                <td style={{ textAlign: "right" }}>{item.count}</td>
-                <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{money(item.average)}</td>
-                <td><button style={{ ...buttonStyle, padding: "6px 9px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => { setCategoryFilter(item.category); setSearch(""); setOwnerFilter("All owners"); setActiveTab("list"); }}>View transactions →</button></td>
-              </tr>)}</tbody>
-            </table>
-          </div> : <p style={{ color: "#718096", fontSize: 13, margin: "18px 0 0" }}>No spending data for this month yet. Add or select a month with saved transactions to build the report.</p>}
-        </div>
-
-        <div className="expense-card" style={cardStyle}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", flexWrap: "wrap", gap: 12 }}>
-            <div>
-              <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Historical spending trend</h3>
-              <p style={{ margin: 0, color: "#718096", fontSize: 13 }}>Month-by-month saved transaction totals through {monthLabel(monthFilter)}. Empty months are shown as zero.</p>
-            </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {([6, 12] as const).map((count) => <button key={count} style={reportMonths === count ? primaryStyle : buttonStyle} aria-pressed={reportMonths === count} onClick={() => setReportMonths(count)}>{count} months</button>)}
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${reportMonths}, minmax(0, 1fr))`, gap: 7, alignItems: "end", marginTop: 20, overflowX: "auto" }}>
-            {reportTrend.map((item) => {
-              const height = item.spend > 0 ? Math.max(6, item.spend / reportTrendMax * 115) : 2;
-              return <div key={item.key} title={`${monthLabel(item.key)}: ${money(item.spend)} · ${item.count} transactions`} style={{ minWidth: reportMonths === 12 ? 34 : 0, display: "grid", gridTemplateRows: "22px 120px auto", gap: 6, alignItems: "end", textAlign: "center" }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#526174", overflowWrap: "anywhere" }}>{item.spend ? money(item.spend) : "—"}</span>
-                <div style={{ height: 120, display: "flex", alignItems: "end", justifyContent: "center", borderBottom: "1px solid #e2e8f0" }}>
-                  <div style={{ height, width: "min(100%, 28px)", borderRadius: "5px 5px 0 0", background: item.key === monthFilter ? "#174b3b" : "#a8c5b7" }} />
-                </div>
-                <span style={{ fontSize: 10, fontWeight: item.key === monthFilter ? 800 : 600, color: item.key === monthFilter ? "#174b3b" : "#718096" }}>{item.label}</span>
-              </div>;
-            })}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 18 }}>
-            <div style={{ padding: 12, borderRadius: 10, background: "#f7faf8" }}><div style={{ fontSize: 11, color: "#718096" }}>Total across {reportMonths} months</div><strong style={{ display: "block", marginTop: 5 }}>{money(reportTrendTotal)}</strong></div>
-            <div style={{ padding: 12, borderRadius: 10, background: "#f7faf8" }}><div style={{ fontSize: 11, color: "#718096" }}>Average per month</div><strong style={{ display: "block", marginTop: 5 }}>{money(reportTrendAverage)}</strong></div>
-            <div style={{ padding: 12, borderRadius: 10, background: "#f7faf8" }}><div style={{ fontSize: 11, color: "#718096" }}>Highest-spend month</div><strong style={{ display: "block", marginTop: 5 }}>{reportTrendPeak?.spend ? `${monthLabel(reportTrendPeak.key)} · ${money(reportTrendPeak.spend)}` : "No spending recorded"}</strong></div>
-            <div style={{ padding: 12, borderRadius: 10, background: "#f7faf8" }}><div style={{ fontSize: 11, color: "#718096" }}>Transactions in period</div><strong style={{ display: "block", marginTop: 5 }}>{reportTrend.reduce((sum, item) => sum + item.count, 0)}</strong></div>
-          </div>
-        </div>
-
-        <div className="expense-card" style={cardStyle}>
-          <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Monthly summary</h3>
-          <p style={{ margin: "0 0 12px", color: "#718096", fontSize: 13 }}>A concise reference for the selected month.</p>
-          {[["Selected month spending", total], ["Previous month spending", previousTotal], ["Budget set for selected month", budgetTotal], ["Change vs previous month", total - previousTotal]].map(([label, amount]) => <div key={String(label)} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "11px 0", borderBottom: "1px solid #edf1f5", fontSize: 13 }}><span style={{ color: "#718096" }}>{label}</span><strong>{money(Number(amount))}</strong></div>)}
+        <div className="expense-card" style={cardStyle}><h3 style={{ margin: "0 0 5px", fontSize: 18 }}>Month summary</h3><p style={{ margin: "0 0 16px", color: "#718096", fontSize: 13 }}>Saved transaction totals</p>
+          {[["Current month",total],["Previous month",previousTotal],["Budgeted",budgetTotal],["Difference vs previous",total-previousTotal]].map(([label, amount])=><div key={String(label)} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: "1px solid #edf1f5", fontSize: 13 }}><span style={{ color: "#718096" }}>{label}</span><strong>{money(Number(amount))}</strong></div>)}
+          <button style={{ ...primaryStyle, marginTop: 16 }} onClick={exportMonth}>Export transactions to Excel</button>
         </div>
       </div>}
       <footer style={{ color: "#8a97a6", fontSize: 11, lineHeight: 1.5 }}>Expense data stays in your existing browser storage keys. Scheduled recurring expenses are not treated as actual spend unless saved as a transaction.</footer>
