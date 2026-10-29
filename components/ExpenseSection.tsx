@@ -58,6 +58,7 @@ const makeRecurringKey = () => `rec-${Date.now()}-${Math.random().toString(36).s
 export default function ExpenseSection() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budgets, setBudgets] = useState<BudgetStore>({});
+  const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({});
   const [monthFilter, setMonthFilter] = useState(today().slice(0, 7));
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [form, setForm] = useState<Expense>(emptyForm);
@@ -137,6 +138,27 @@ export default function ExpenseSection() {
   }, [monthExpenses]);
   const monthBudgets = budgets[monthFilter] || {};
   const budgetTotal = Object.values(monthBudgets).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  const budgetCategories = Array.from(new Set([
+    ...EXPENSE_CATEGORIES,
+    ...Object.keys(monthBudgets),
+    ...categoryTotals.map(([category]) => category),
+  ])).sort((a, b) => {
+    const ai = EXPENSE_CATEGORIES.indexOf(a as (typeof EXPENSE_CATEGORIES)[number]);
+    const bi = EXPENSE_CATEGORIES.indexOf(b as (typeof EXPENSE_CATEGORIES)[number]);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  useEffect(() => {
+    const saved = budgets[monthFilter] || {};
+    const drafts: Record<string, string> = {};
+    Object.entries(saved).forEach(([category, amount]) => {
+      drafts[category] = String(amount);
+    });
+    setBudgetDrafts(drafts);
+  }, [budgets, monthFilter]);
   const previousMonth = useMemo(() => {
     const [year, month] = monthFilter.split("-").map(Number);
     const d = new Date(year, month - 2, 1);
@@ -191,10 +213,30 @@ export default function ExpenseSection() {
     if (editingId === index) setEditingId(null);
     setNotice("Expense deleted.");
   };
-  const updateBudget = (category: string, value: string) => {
-    const amount = value === "" ? 0 : Number(value);
-    if (!Number.isFinite(amount) || amount < 0) return;
-    persistBudgets({ ...budgets, [monthFilter]: { ...monthBudgets, [category]: amount } });
+  const updateBudgetDraft = (category: string, value: string) => {
+    if (value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0)) return;
+    setBudgetDrafts((current) => ({ ...current, [category]: value }));
+  };
+  const saveBudgetDrafts = () => {
+    const nextMonth: Record<string, number> = { ...monthBudgets };
+    for (const category of budgetCategories) {
+      const raw = (budgetDrafts[category] ?? "").trim();
+      if (raw === "") {
+        delete nextMonth[category];
+        continue;
+      }
+      const amount = Number(raw);
+      if (!Number.isFinite(amount) || amount < 0) {
+        setNotice(`Enter a valid non-negative budget for ${category}.`);
+        return;
+      }
+      nextMonth[category] = amount;
+    }
+    const nextBudgets = { ...budgets };
+    if (Object.keys(nextMonth).length) nextBudgets[monthFilter] = nextMonth;
+    else delete nextBudgets[monthFilter];
+    persistBudgets(nextBudgets);
+    setNotice("Budgets saved. Blank fields are unset; ₹0 is a valid explicit budget.");
   };
   const copyPreviousBudget = () => {
     const previous = budgets[previousMonth];
@@ -278,7 +320,7 @@ export default function ExpenseSection() {
       <header style={{ display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ color: "#5d8b78", fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase" }}>PERSONAL FINANCE</div>
-          <h2 style={{ margin: "5px 0", fontSize: 28, lineHeight: 1.2, letterSpacing: "-.04em" }}>Expense Tracker</h2>
+          <h2 style={{ margin: "5px 0", fontSize: 28, lineHeight: 1.2, letterSpacing: "-.04em" }}>Expense tracker</h2>
           <p style={{ margin: 0, color: "#718096", fontSize: 14 }}>A clear view of where your money goes.</p>
         </div>
         <label style={{ ...labelStyle, minWidth: 190 }}>REPORTING MONTH
@@ -372,21 +414,66 @@ export default function ExpenseSection() {
       </div>}
 
       {activeTab === "budget" && <div className="expense-card" style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}><div><h3 style={{ margin: 0, fontSize: 18 }}>Budget vs actual</h3><p style={{ color: "#718096", fontSize: 13, margin: "5px 0 0" }}>{monthLabel(monthFilter)} · budgets are independent by month</p></div><button style={buttonStyle} onClick={copyPreviousBudget}>Copy previous month's budget</button></div>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 18 }}>Budget vs actual</h3>
+            <p style={{ color: "#718096", fontSize: 13, margin: "5px 0 0" }}>{monthLabel(monthFilter)} · each month has its own independent budget</p>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button style={buttonStyle} onClick={copyPreviousBudget}>Copy previous month's budget</button>
+            <button style={primaryStyle} onClick={saveBudgetDrafts}>Save budgets</button>
+          </div>
+        </div>
+        <p style={{ color: "#718096", fontSize: 12, lineHeight: 1.5, margin: "12px 0 0" }}>
+          Leave a field blank to mark that category as not budgeted. Enter <strong>0</strong> to set an explicit zero budget. Changes are saved when you select “Save budgets”.
+        </p>
         <div style={{ marginTop: 18, display: "grid", gap: 10 }}>
-          {EXPENSE_CATEGORIES.map((cat) => {
-            const actual = categoryTotals.find(([c])=>c===cat)?.[1] || 0;
-            const budget = Number(monthBudgets[cat]) || 0;
+          {budgetCategories.map((cat) => {
+            const actual = categoryTotals.find(([c]) => c === cat)?.[1] || 0;
+            const hasBudget = Object.prototype.hasOwnProperty.call(monthBudgets, cat);
+            const rawDraft = budgetDrafts[cat] ?? (hasBudget ? String(monthBudgets[cat]) : "");
+            const draftValue = rawDraft.trim() === "" ? null : Number(rawDraft);
+            const draftIsValid = draftValue !== null && Number.isFinite(draftValue) && draftValue >= 0;
+            const hasDraftBudget = draftIsValid;
+            const budget = hasDraftBudget ? draftValue as number : 0;
             const variance = budget - actual;
-            const pct = budget > 0 ? Math.min(100, actual / budget * 100) : actual > 0 ? 100 : 0;
-            return <div key={cat} style={{ padding: 13, border: "1px solid #edf1f5", borderRadius: 12, display: "grid", gridTemplateColumns: "minmax(130px, 1fr) minmax(100px, 160px) minmax(120px, 1fr)", gap: 12, alignItems: "center" }}>
-              <div><strong style={{ fontSize: 13 }}>{cat}</strong><div style={{ fontSize: 12, color: "#718096", marginTop: 4 }}>Actual: {money(actual)}</div></div>
-              <label style={labelStyle}>MONTHLY BUDGET (₹)<input style={fieldStyle} type="number" min="0" step="1" value={budget || ""} placeholder="0" onChange={(e)=>updateBudget(cat,e.target.value)} /></label>
-              <div><div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11, color: "#718096", marginBottom: 6 }}><span>{budget ? `${Math.round(actual / budget * 100)}% used` : actual ? "No budget set" : "No spend"}</span><strong style={{ color: budget && actual > budget ? "#b42318" : "#286348" }}>{budget ? `${money(Math.abs(variance))} ${variance >= 0 ? "left" : "over"}` : "—"}</strong></div><div style={{ height: 7, borderRadius: 10, background: "#edf1f5", overflow: "hidden" }}><div style={{ height: "100%", width: `${pct}%`, background: budget && actual > budget ? "#c45d55" : "#4e8a70" }} /></div></div>
+            const pct = hasDraftBudget && budget > 0 ? Math.min(100, actual / budget * 100) : 0;
+            const overBudget = hasDraftBudget && actual > budget;
+            const status = !hasDraftBudget ? "Budget not set" : overBudget ? "Over budget" : "Within budget";
+            const statusColor = !hasDraftBudget ? "#7a8999" : overBudget ? "#b42318" : "#286348";
+            return <div key={cat} style={{ padding: 13, border: "1px solid #edf1f5", borderRadius: 12, display: "grid", gridTemplateColumns: "minmax(130px, 1fr) minmax(120px, 160px) minmax(120px, 1fr)", gap: 12, alignItems: "center" }}>
+              <div>
+                <strong style={{ fontSize: 13 }}>{cat}</strong>
+                <div style={{ fontSize: 12, color: "#718096", marginTop: 4 }}>Actual: {money(actual)}</div>
+              </div>
+              <label style={labelStyle}>MONTHLY BUDGET (₹)
+                <input style={fieldStyle} type="number" min="0" step="0.01" inputMode="decimal"
+                  value={rawDraft} placeholder="Not set"
+                  aria-label={`${cat} monthly budget`}
+                  onChange={(e) => updateBudgetDraft(cat, e.target.value)} />
+              </label>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11, color: "#718096", marginBottom: 6 }}>
+                  <span>{hasDraftBudget && budget > 0 ? `${Math.round(actual / budget * 100)}% used` : hasDraftBudget && budget === 0 ? "0 budget" : "No budget set"}</span>
+                  <strong style={{ color: statusColor }}>{status}</strong>
+                </div>
+                <div style={{ height: 7, borderRadius: 10, background: "#edf1f5", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${pct}%`, background: overBudget ? "#c45d55" : "#4e8a70" }} />
+                </div>
+                <div style={{ fontSize: 12, marginTop: 5, color: statusColor }}>
+                  {hasDraftBudget ? `${money(Math.abs(variance))} ${variance >= 0 ? "remaining" : "over"}` : "Set a budget to track variance"}
+                </div>
+              </div>
             </div>;
           })}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, padding: 15, background: "#f7faf8", borderRadius: 12, marginTop: 16 }}><span style={{ fontWeight: 700 }}>Total budget: {money(budgetTotal)}</span><span style={{ fontWeight: 700 }}>Actual: {money(total)}</span><span style={{ fontWeight: 800, color: total > budgetTotal && budgetTotal > 0 ? "#b42318" : "#286348" }}>{budgetTotal ? `${money(Math.abs(budgetTotal-total))} ${total <= budgetTotal ? "remaining" : "over budget"}` : "Set a budget to track variance"}</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, padding: 15, background: "#f7faf8", borderRadius: 12, marginTop: 16 }}>
+          <span style={{ fontWeight: 700 }}>Total set budgets: {money(budgetTotal)}</span>
+          <span style={{ fontWeight: 700 }}>Actual: {money(total)}</span>
+          <span style={{ fontWeight: 800, color: total > budgetTotal && budgetTotal > 0 ? "#b42318" : "#286348" }}>
+            {budgetTotal ? `${money(Math.abs(budgetTotal - total))} ${total <= budgetTotal ? "remaining" : "over budget"}` : "Set a budget to track variance"}
+          </span>
+        </div>
       </div>}
 
       {activeTab === "recurring" && <div className="expense-card" style={cardStyle}>
