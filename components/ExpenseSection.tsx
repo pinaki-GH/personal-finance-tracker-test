@@ -271,7 +271,7 @@ export default function ExpenseSection() {
   const tabs: { id: Tab; label: string; sub: string }[] = [
     { id: "overview", label: "Overview", sub: "Monthly snapshot" },
     { id: "list", label: "Expense list", sub: "Transactions" },
-    { id: "budget", label: "Budget vs actual", sub: "Plan your month" },
+    { id: "budget", label: "Budget vs Actual", sub: "Plan your month" },
     { id: "recurring", label: "Recurring", sub: "Monthly schedules" },
     { id: "reports", label: "Reports", sub: "Category insights" },
   ];
@@ -431,7 +431,7 @@ export default function ExpenseSection() {
       {activeTab === "budget" && <div className="expense-card" style={cardStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 18 }}>Budget vs actual</h3>
+            <h3 style={{ margin: 0, fontSize: 18 }}>Budget vs Actual</h3>
             <p style={{ color: "#718096", fontSize: 13, margin: "5px 0 0" }}>{monthLabel(monthFilter)} · each month has its own independent budget</p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
