@@ -202,6 +202,16 @@ export default function ExpenseSection() {
     .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const owners = Array.from(new Set(expenses.map((e) => e.owner.trim()).filter(Boolean))).sort();
   const recurringExpenses = schedules;
+  // Count only schedules whose active date range overlaps the selected reporting month.
+  const applicableRecurringSchedules = schedules.filter((schedule) => {
+    const start = parseDate(schedule.startDate);
+    if (!start) return false;
+    const [year, month] = monthFilter.split("-").map(Number);
+    const monthStart = new Date(year, month - 1, 1);
+    const monthEnd = new Date(year, month, 0);
+    const end = schedule.endDate ? parseDate(schedule.endDate) : null;
+    return start <= monthEnd && (!end || end >= monthStart);
+  });
   const addDays = (date: Date, count: number) => { const d = new Date(date); d.setDate(d.getDate() + count); return d; };
   const occurrenceDates = (schedule: RecurringSchedule, month: string) => {
     const [yy, mm] = month.split("-").map(Number);
@@ -452,7 +462,7 @@ export default function ExpenseSection() {
           { label: "SPENT THIS MONTH", value: money(total), note: `${monthExpenses.length} saved transaction${monthExpenses.length === 1 ? "" : "s"}` },
           { label: "MONTHLY BUDGET", value: money(budgetTotal), note: budgetTotal ? `${money(budgetTotal - total)} ${budgetTotal >= total ? "remaining" : "over budget"}` : "Set category budgets" },
           { label: "VS PREVIOUS MONTH", value: previousTotal ? `${total >= previousTotal ? "+" : "−"}${Math.abs(((total - previousTotal) / previousTotal) * 100).toFixed(1)}%` : "—", note: previousTotal ? `${money(previousTotal)} previous spend` : "No previous-month spend" },
-          { label: "RECURRING SCHEDULES", value: String(recurringExpenses.length), note: "Confirm payments to record spend" },
+          { label: "RECURRING SCHEDULES", value: String(applicableRecurringSchedules.length), note: "Active this reporting month" },
         ].map((item) => (
           <div key={item.label} style={{ ...cardStyle, padding: 17 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>{item.label}</div>
