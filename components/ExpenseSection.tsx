@@ -169,6 +169,32 @@ export default function ExpenseSection() {
     .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const owners = Array.from(new Set(expenses.map((e) => e.owner.trim()).filter(Boolean))).sort();
   const recurringExpenses = expenses.filter((e) => e.recurring === "Monthly");
+  const monthlyTrend = useMemo(() => {
+    const [year, month] = monthFilter.split("-").map(Number);
+    return Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(year, month - 6 + index + 1, 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const spend = expenses
+        .filter((expense) => monthKey(expense.expenseDate) === key)
+        .reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
+      return { key, label: date.toLocaleDateString("en-IN", { month: "short" }), spend };
+    });
+  }, [expenses, monthFilter]);
+  const previousMonthBudgetTotal = Object.values(budgets[previousMonth] || {})
+    .reduce((sum, value) => sum + (Number(value) || 0), 0);
+  const spendingChange = previousTotal > 0 ? ((total - previousTotal) / previousTotal) * 100 : null;
+  const budgetedCategoryCount = Object.keys(monthBudgets).length;
+  const overBudgetCategories = categoryTotals.filter(([category, actual]) =>
+    Object.prototype.hasOwnProperty.call(monthBudgets, category) && actual > Number(monthBudgets[category])
+  );
+  const approachingBudgetCategories = categoryTotals.filter(([category, actual]) => {
+    if (!Object.prototype.hasOwnProperty.call(monthBudgets, category)) return false;
+    const budget = Number(monthBudgets[category]);
+    return budget > 0 && actual / budget >= 0.8 && actual <= budget;
+  });
+  const budgetRemaining = budgetTotal - total;
+  const trendMax = Math.max(1, ...monthlyTrend.map((item) => item.spend));
+
 
   const addExpense = () => {
     const error = validate(form);
@@ -372,33 +398,125 @@ export default function ExpenseSection() {
         </button>)}
       </nav>
 
-      {activeTab === "overview" && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 16 }}>
-        <div className="expense-card" style={cardStyle}>
-          <h3 style={{ margin: "0 0 4px", fontSize: 17 }}>Spending by category</h3>
-          <p style={{ color: "#718096", fontSize: 13, margin: "0 0 16px" }}>{monthLabel(monthFilter)} · confirmed transactions only</p>
-          {categoryTotals.length ? categoryTotals.slice(0, 6).map(([cat, amount]) => (
-            <div key={cat} style={{ marginBottom: 15 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, marginBottom: 6 }}><span>{cat}</span><strong>{money(amount)}</strong></div>
-              <div style={{ height: 7, borderRadius: 20, background: "#edf1f5", overflow: "hidden" }}><div style={{ height: "100%", borderRadius: 20, background: "#4e8a70", width: `${total ? Math.min(100, amount / total * 100) : 0}%` }} /></div>
+      {activeTab === "overview" && <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))", gap: 12 }}>
+          {[
+            { label: "TOTAL SPENT", value: money(total), note: `${monthExpenses.length} saved transaction${monthExpenses.length === 1 ? "" : "s"}`, tone: "#174b3b" },
+            { label: "BUDGET SET", value: money(budgetTotal), note: `${budgetedCategoryCount} categor${budgetedCategoryCount === 1 ? "y" : "ies"} budgeted`, tone: "#24364b" },
+            { label: "BUDGET REMAINING", value: budgetTotal ? money(Math.abs(budgetRemaining)) : "—", note: budgetTotal ? (budgetRemaining >= 0 ? "Available against budget" : "Above total budget") : "Set budgets to track", tone: budgetTotal && budgetRemaining < 0 ? "#b42318" : "#286348" },
+            { label: "VS PREVIOUS MONTH", value: spendingChange === null ? "—" : `${spendingChange > 0 ? "+" : ""}${spendingChange.toFixed(1)}%`, note: previousTotal ? `${money(previousTotal)} spent in ${monthLabel(previousMonth)}` : "No previous-month spending", tone: spendingChange !== null && spendingChange > 0 ? "#b42318" : "#286348" },
+          ].map((item) => (
+            <div key={item.label} style={{ ...cardStyle, padding: 17 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>{item.label}</div>
+              <div style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-.04em", margin: "9px 0 5px", overflowWrap: "anywhere", color: item.tone }}>{item.value}</div>
+              <div style={{ fontSize: 12, color: "#718096" }}>{item.note}</div>
             </div>
-          )) : <p style={{ color: "#718096", fontSize: 13 }}>No expenses saved for this month yet.</p>}
-          <button style={{ ...buttonStyle, marginTop: 5 }} onClick={() => setActiveTab("reports")}>View report →</button>
+          ))}
         </div>
-        <div className="expense-card" style={{ ...cardStyle, background: "#f7faf8" }}>
-          <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Quick add</h3>
-          <p style={{ color: "#718096", fontSize: 13, margin: "0 0 16px" }}>Add a saved transaction. Only saved transactions count as actual spending.</p>
-          {formFields(form, setForm)}
-          {formError && <p role="alert" style={{ color: "#b42318", fontSize: 13 }}>{formError}</p>}
-          <button style={{ ...primaryStyle, marginTop: 14 }} onClick={addExpense}>＋ Save expense</button>
+
+        {(overBudgetCategories.length > 0 || approachingBudgetCategories.length > 0) && (
+          <div className="expense-card" style={{ ...cardStyle, borderColor: overBudgetCategories.length ? "#f0c6c3" : "#f2dfb5", background: overBudgetCategories.length ? "#fff8f7" : "#fffcf4" }}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>{overBudgetCategories.length ? "Budget attention needed" : "Budget watch"}</h3>
+            {overBudgetCategories.length > 0 && <p style={{ margin: "0 0 8px", fontSize: 13, color: "#a12a2a" }}>
+              Over budget: {overBudgetCategories.map(([category, actual]) => `${category} (${money(actual - Number(monthBudgets[category]))} over)`).join(" · ")}.
+            </p>}
+            {approachingBudgetCategories.length > 0 && <p style={{ margin: 0, fontSize: 13, color: "#7c5b20" }}>
+              At least 80% used: {approachingBudgetCategories.map(([category, actual]) => `${category} (${Math.round(actual / Number(monthBudgets[category]) * 100)}%)`).join(" · ")}.
+            </p>}
+          </div>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 16 }}>
+          <div className="expense-card" style={cardStyle}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start", marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: "0 0 4px", fontSize: 17 }}>Spending by category</h3>
+                <p style={{ color: "#718096", fontSize: 13, margin: 0 }}>{monthLabel(monthFilter)} · saved transactions only</p>
+              </div>
+              <button style={buttonStyle} onClick={() => setActiveTab("reports")}>Full report →</button>
+            </div>
+            {categoryTotals.length ? categoryTotals.slice(0, 6).map(([category, amount]) => {
+              const budget = monthBudgets[category];
+              const hasBudget = Object.prototype.hasOwnProperty.call(monthBudgets, category);
+              const percent = total ? amount / total * 100 : 0;
+              const budgetPercent = hasBudget && Number(budget) > 0 ? amount / Number(budget) * 100 : null;
+              const over = hasBudget && amount > Number(budget);
+              return <div key={category} style={{ marginBottom: 15 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, marginBottom: 6 }}>
+                  <span>{category}</span><strong>{money(amount)}</strong>
+                </div>
+                <div style={{ height: 7, borderRadius: 20, background: "#edf1f5", overflow: "hidden" }}>
+                  <div style={{ height: "100%", borderRadius: 20, background: over ? "#c45d55" : "#4e8a70", width: `${Math.min(100, percent)}%` }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11, color: "#718096", marginTop: 4 }}>
+                  <span>{percent.toFixed(1)}% of spending</span>
+                  <span style={{ color: over ? "#b42318" : "#718096" }}>{budgetPercent === null ? "No category budget" : `${Math.round(budgetPercent)}% of budget used`}</span>
+                </div>
+              </div>;
+            }) : <p style={{ color: "#718096", fontSize: 13 }}>No expenses saved for this month yet.</p>}
+            <button style={{ ...buttonStyle, marginTop: 3 }} onClick={() => setActiveTab("budget")}>Review budgets →</button>
+          </div>
+
+          <div className="expense-card" style={cardStyle}>
+            <h3 style={{ margin: "0 0 4px", fontSize: 17 }}>Six-month spending trend</h3>
+            <p style={{ color: "#718096", fontSize: 13, margin: "0 0 20px" }}>Monthly totals through {monthLabel(monthFilter)}</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8, alignItems: "end", minHeight: 170 }}>
+              {monthlyTrend.map((item) => {
+                const height = item.spend > 0 ? Math.max(8, item.spend / trendMax * 120) : 3;
+                const isSelected = item.key === monthFilter;
+                return <div key={item.key} title={`${monthLabel(item.key)}: ${money(item.spend)}`} style={{ display: "grid", gridTemplateRows: "20px 120px auto", alignItems: "end", gap: 7, textAlign: "center", minWidth: 0 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#526174", overflowWrap: "anywhere" }}>{item.spend ? money(item.spend) : "—"}</span>
+                  <div style={{ height: 120, display: "flex", alignItems: "end", justifyContent: "center", borderBottom: "1px solid #e2e8f0" }}>
+                    <div style={{ height, width: "min(100%, 28px)", borderRadius: "6px 6px 0 0", background: isSelected ? "#174b3b" : "#a8c5b7" }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: isSelected ? 800 : 600, color: isSelected ? "#174b3b" : "#718096" }}>{item.label}</span>
+                </div>;
+              })}
+            </div>
+            <p style={{ color: "#718096", fontSize: 11, margin: "14px 0 0" }}>Months without saved transactions appear as zero. Choose a different reporting month above to move this window.</p>
+          </div>
         </div>
-        <div className="expense-card" style={{ ...cardStyle, gridColumn: "1 / -1" }}>
+
+        <div className="expense-card" style={cardStyle}>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-            <div><h3 style={{ margin: 0, fontSize: 17 }}>Recent expenses</h3><p style={{ color: "#718096", fontSize: 13, margin: "5px 0 0" }}>Latest saved transactions for {monthLabel(monthFilter)}.</p></div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 17 }}>Recent expenses</h3>
+              <p style={{ color: "#718096", fontSize: 13, margin: "5px 0 0" }}>Latest saved transactions for {monthLabel(monthFilter)}.</p>
+            </div>
             <button style={buttonStyle} onClick={() => setActiveTab("list")}>All transactions →</button>
           </div>
           {monthExpenses.length ? <div className="expense-scroll" style={{ marginTop: 14 }}><table className="expense-table"><thead><tr><th>DESCRIPTION</th><th>CATEGORY</th><th>DATE</th><th style={{ textAlign: "right" }}>AMOUNT</th></tr></thead><tbody>
             {monthExpenses.slice().sort((a,b)=>(b.expenseDate?.getTime()??0)-(a.expenseDate?.getTime()??0)).slice(0,5).map((e, i) => <tr key={`${e.description}-${dateInput(e.expenseDate)}-${i}`}><td style={{ fontWeight: 700 }}>{e.description}</td><td>{e.category}</td><td>{dateInput(e.expenseDate)}</td><td style={{ textAlign: "right", fontWeight: 800 }}>{money(Number(e.amount)||0)}</td></tr>)}
-          </tbody></table></div> : <p style={{ color: "#718096", fontSize: 13, marginTop: 18 }}>Nothing recorded yet. Add your first expense above.</p>}
+          </tbody></table></div> : <p style={{ color: "#718096", fontSize: 13, marginTop: 18 }}>Nothing recorded yet. Add your first expense from the Expense List tab.</p>}
+        </div>
+
+        <div className="expense-card" style={{ ...cardStyle, background: "#f7faf8" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <div>
+              <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Monthly snapshot</h3>
+              <p style={{ color: "#718096", fontSize: 13, margin: 0 }}>A quick summary of spending and planning for {monthLabel(monthFilter)}.</p>
+            </div>
+            <span style={{ fontSize: 12, color: "#526174" }}>{recurringExpenses.length} recurring schedule{recurringExpenses.length === 1 ? "" : "s"} saved</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 16 }}>
+            <div><div style={{ fontSize: 11, color: "#718096" }}>Previous month actual</div><strong style={{ display: "block", fontSize: 16, marginTop: 5 }}>{money(previousTotal)}</strong></div>
+            <div><div style={{ fontSize: 11, color: "#718096" }}>Previous month budget</div><strong style={{ display: "block", fontSize: 16, marginTop: 5 }}>{money(previousMonthBudgetTotal)}</strong></div>
+            <div><div style={{ fontSize: 11, color: "#718096" }}>Average monthly spend (6 months)</div><strong style={{ display: "block", fontSize: 16, marginTop: 5 }}>{money(monthlyTrend.reduce((sum, item) => sum + item.spend, 0) / monthlyTrend.length)}</strong></div>
+            <div><div style={{ fontSize: 11, color: "#718096" }}>Budget status</div><strong style={{ display: "block", fontSize: 16, marginTop: 5, color: overBudgetCategories.length ? "#b42318" : budgetedCategoryCount ? "#286348" : "#718096" }}>{overBudgetCategories.length ? `${overBudgetCategories.length} over budget` : budgetedCategoryCount ? "No categories over budget" : "No budgets set"}</strong></div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
+            <button style={primaryStyle} onClick={() => setActiveTab("list")}>Manage expenses</button>
+            <button style={buttonStyle} onClick={() => setActiveTab("budget")}>Manage budgets</button>
+            <button style={buttonStyle} onClick={exportMonth}>Export this month ↓</button>
+          </div>
+        </div>
+
+        <div className="expense-card" style={cardStyle}>
+          <h3 style={{ margin: "0 0 5px", fontSize: 17 }}>Quick add expense</h3>
+          <p style={{ color: "#718096", fontSize: 13, margin: "0 0 16px" }}>Only saved transactions count as actual spending.</p>
+          {formFields(form, setForm)}
+          {formError && <p role="alert" style={{ color: "#b42318", fontSize: 13 }}>{formError}</p>}
+          <button style={{ ...primaryStyle, marginTop: 14 }} onClick={addExpense}>＋ Save expense</button>
         </div>
       </div>}
 
