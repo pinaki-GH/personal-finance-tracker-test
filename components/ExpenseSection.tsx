@@ -698,7 +698,24 @@ export default function ExpenseSection() {
           <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}><button style={primaryStyle} onClick={saveSchedule}>{editingScheduleId ? "Save changes" : "＋ Save schedule"}</button>{editingScheduleId && <button style={buttonStyle} onClick={()=>{setEditingScheduleId(null);setScheduleDraft({id:"",description:"",amount:"",category:"",owner:"",frequency:"Monthly",startDate:today(),endDate:"",paused:false,paidOccurrences:[]})}}>Cancel edit</button>}</div>
         </div>
         <h4 style={{ margin: "0 0 10px" }}>Scheduled payments · {monthLabel(monthFilter)}</h4>
-        {schedules.length ? <div style={{ display: "grid", gap: 12 }}>{schedules.map(schedule=>{
+        {schedules.filter(schedule => {
+          // Show a schedule only from the month of its first due date through its optional end date.
+          const start = parseDate(schedule.startDate);
+          if (!start) return false;
+          const [year, month] = monthFilter.split("-").map(Number);
+          const monthStart = new Date(year, month - 1, 1);
+          const monthEnd = new Date(year, month, 0);
+          const end = schedule.endDate ? parseDate(schedule.endDate) : null;
+          return start <= monthEnd && (!end || end >= monthStart);
+        }).length ? <div style={{ display: "grid", gap: 12 }}>{schedules.filter(schedule => {
+          const start = parseDate(schedule.startDate);
+          if (!start) return false;
+          const [year, month] = monthFilter.split("-").map(Number);
+          const monthStart = new Date(year, month - 1, 1);
+          const monthEnd = new Date(year, month, 0);
+          const end = schedule.endDate ? parseDate(schedule.endDate) : null;
+          return start <= monthEnd && (!end || end >= monthStart);
+        }).map(schedule=>{
           const occurrences = schedule.paused ? [] : occurrenceDates(schedule, monthFilter);
           return <div key={schedule.id} style={{ border: "1px solid #edf1f5", padding: 14, borderRadius: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><strong>{schedule.description}</strong><div style={{ color: "#718096", fontSize: 12, marginTop: 5 }}>{schedule.category} · {schedule.owner || "No owner specified"} · {schedule.frequency}{schedule.paused ? " · Paused" : ""}</div></div><strong>{money(Number(schedule.amount)||0)}</strong></div>
