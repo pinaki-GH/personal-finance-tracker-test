@@ -321,7 +321,7 @@ export const calculateCategoryBudgetActuals = (
     budgetMap.set(budget.categoryId || legacyCategoryId(budget.category), budget);
   });
 
-  const keys = new Set([...actuals.keys(), ...budgetMap.keys()]);
+  const keys = new Set([...Array.from(actuals.keys()), ...Array.from(budgetMap.keys())]);
   return Array.from(keys).map((key) => {
     const actualRow = actuals.get(key);
     const budgetRow = budgetMap.get(key);
