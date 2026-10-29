@@ -378,7 +378,7 @@ export default function ExpenseSection() {
 
   const tabs: { id: Tab; label: string; sub: string }[] = [
     { id: "overview", label: "Overview", sub: "Monthly snapshot" },
-    { id: "list", label: "Expense list", sub: "Transactions" },
+    { id: "list", label: "Expense List", sub: "Transactions" },
     { id: "budget", label: "Budget vs Actual", sub: "Plan your month" },
     { id: "recurring", label: "Recurring", sub: "Upcoming payments" },
     { id: "reports", label: "Reports", sub: "Category insights" },
