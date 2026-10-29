@@ -11,6 +11,8 @@ const EXPENSE_CATEGORIES = [
 ] as const;
 
 type RecurringType = "None" | "Monthly";
+type Frequency = "Weekly" | "Monthly" | "Quarterly" | "Yearly";
+type RecurringSchedule = { id: string; description: string; amount: string; category: string; owner: string; frequency: Frequency; startDate: string; endDate: string; paused: boolean; paidOccurrences: string[]; legacyRecurringKey?: string };
 type Expense = {
   description: string;
   amount: string;
@@ -58,6 +60,9 @@ const makeRecurringKey = () => `rec-${Date.now()}-${Math.random().toString(36).s
 export default function ExpenseSection() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budgets, setBudgets] = useState<BudgetStore>({});
+  const [schedules, setSchedules] = useState<RecurringSchedule[]>([]);
+  const [scheduleDraft, setScheduleDraft] = useState<RecurringSchedule>({ id: "", description: "", amount: "", category: "", owner: "", frequency: "Monthly", startDate: today(), endDate: "", paused: false, paidOccurrences: [] });
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({});
   const [monthFilter, setMonthFilter] = useState(today().slice(0, 7));
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -86,6 +91,20 @@ export default function ExpenseSection() {
         : null,
     }));
     setExpenses(hydrated);
+    const savedSchedules = getData<RecurringSchedule[] | null>("expenseRecurringSchedules");
+    if (Array.isArray(savedSchedules)) {
+      setSchedules(savedSchedules);
+    } else {
+      // One-time compatibility migration: preserve legacy monthly rows as transactions
+      // and create independent schedules from them without generating future spend.
+      const legacy = hydrated.filter((e) => e.recurring === "Monthly").map((e, i): RecurringSchedule => ({
+        id: e.recurringKey || `legacy-${i}-${makeRecurringKey()}`, description: e.description, amount: e.amount,
+        category: e.category, owner: e.owner, frequency: "Monthly", startDate: dateInput(e.expenseDate) || today(),
+        endDate: "", paused: false, paidOccurrences: dateInput(e.expenseDate) ? [dateInput(e.expenseDate)] : [], legacyRecurringKey: e.recurringKey,
+      }));
+      setSchedules(legacy);
+      saveData("expenseRecurringSchedules", legacy);
+    }
     const savedBudgets = getData<BudgetStore | null>("expenseBudgets");
     setBudgets(savedBudgets && typeof savedBudgets === "object" ? savedBudgets : {});
     const validMonths = hydrated.map((e) => monthKey(e.expenseDate)).filter(Boolean).sort();
@@ -100,6 +119,7 @@ export default function ExpenseSection() {
     saveData("expenses", stored);
     setExpenses(next);
   };
+  const persistSchedules = (next: RecurringSchedule[]) => { saveData("expenseRecurringSchedules", next); setSchedules(next); };
   const persistBudgets = (next: BudgetStore) => {
     saveData("expenseBudgets", next);
     setBudgets(next);
@@ -168,7 +188,46 @@ export default function ExpenseSection() {
   const previousTotal = expenses.filter((e) => monthKey(e.expenseDate) === previousMonth)
     .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const owners = Array.from(new Set(expenses.map((e) => e.owner.trim()).filter(Boolean))).sort();
-  const recurringExpenses = expenses.filter((e) => e.recurring === "Monthly");
+  const recurringExpenses = schedules;
+  const addDays = (date: Date, count: number) => { const d = new Date(date); d.setDate(d.getDate() + count); return d; };
+  const occurrenceDates = (schedule: RecurringSchedule, month: string) => {
+    const [yy, mm] = month.split("-").map(Number);
+    const monthStart = new Date(yy, mm - 1, 1); const monthEnd = new Date(yy, mm, 0);
+    const start = parseDate(schedule.startDate); if (!start) return [] as string[];
+    const endLimit = schedule.endDate ? parseDate(schedule.endDate) : null;
+    const results: string[] = []; let cursor = new Date(start); let guard = 0;
+    while (cursor < monthStart && guard++ < 5000) {
+      if (schedule.frequency === "Weekly") cursor = addDays(cursor, 7);
+      else if (schedule.frequency === "Monthly") cursor.setMonth(cursor.getMonth() + 1);
+      else if (schedule.frequency === "Quarterly") cursor.setMonth(cursor.getMonth() + 3);
+      else cursor.setFullYear(cursor.getFullYear() + 1);
+    }
+    while (cursor <= monthEnd && (!endLimit || cursor <= endLimit) && guard++ < 5000) {
+      if (cursor >= monthStart) results.push(dateInput(cursor));
+      if (schedule.frequency === "Weekly") cursor = addDays(cursor, 7);
+      else if (schedule.frequency === "Monthly") cursor.setMonth(cursor.getMonth() + 1);
+      else if (schedule.frequency === "Quarterly") cursor.setMonth(cursor.getMonth() + 3);
+      else cursor.setFullYear(cursor.getFullYear() + 1);
+    }
+    return results;
+  };
+  const saveSchedule = () => {
+    if (!scheduleDraft.description.trim() || !scheduleDraft.category || !(Number(scheduleDraft.amount) > 0) || !parseDate(scheduleDraft.startDate)) { setNotice("Enter a description, a valid amount, category, and start date for the schedule."); return; }
+    const item = { ...scheduleDraft, id: editingScheduleId || makeRecurringKey(), description: scheduleDraft.description.trim(), amount: String(Number(scheduleDraft.amount)), owner: scheduleDraft.owner.trim() };
+    persistSchedules(editingScheduleId ? schedules.map((s) => s.id === editingScheduleId ? item : s) : [...schedules, item]);
+    setScheduleDraft({ id: "", description: "", amount: "", category: "", owner: "", frequency: "Monthly", startDate: today(), endDate: "", paused: false, paidOccurrences: [] });
+    setEditingScheduleId(null); setNotice(editingScheduleId ? "Recurring schedule updated." : "Recurring schedule saved.");
+  };
+  const confirmOccurrence = (schedule: RecurringSchedule, dueDate: string) => {
+    if (!window.confirm(`Confirm that ${schedule.description} (${money(Number(schedule.amount) || 0)}) was paid on ${dueDate}? This adds one actual transaction.`)) return;
+    const alreadyExists = expenses.some((e) => (e as Expense & { recurringOccurrence?: string }).recurringOccurrence === `${schedule.id}:${dueDate}`);
+    const paid = schedule.paidOccurrences.includes(dueDate) || alreadyExists;
+    if (paid) { setNotice("This scheduled payment is already recorded."); return; }
+    const transaction = { description: schedule.description, amount: schedule.amount, category: schedule.category, owner: schedule.owner, expenseDate: parseDate(dueDate), recurring: "None" as RecurringType, recurringKey: undefined, recurringOccurrence: `${schedule.id}:${dueDate}` } as Expense;
+    persistExpenses([...expenses, transaction]);
+    persistSchedules(schedules.map((s) => s.id === schedule.id ? { ...s, paidOccurrences: [...s.paidOccurrences, dueDate] } : s));
+    setNotice("Payment confirmed and added to actual spending.");
+  };
   const monthlyTrend = useMemo(() => {
     const [year, month] = monthFilter.split("-").map(Number);
     return Array.from({ length: 6 }, (_, index) => {
@@ -298,7 +357,7 @@ export default function ExpenseSection() {
     { id: "overview", label: "Overview", sub: "Monthly snapshot" },
     { id: "list", label: "Expense list", sub: "Transactions" },
     { id: "budget", label: "Budget vs Actual", sub: "Plan your month" },
-    { id: "recurring", label: "Recurring", sub: "Monthly schedules" },
+    { id: "recurring", label: "Recurring", sub: "Upcoming payments" },
     { id: "reports", label: "Reports", sub: "Category insights" },
   ];
   const fieldStyle: React.CSSProperties = {
@@ -380,7 +439,7 @@ export default function ExpenseSection() {
           { label: "SPENT THIS MONTH", value: money(total), note: `${monthExpenses.length} saved transaction${monthExpenses.length === 1 ? "" : "s"}` },
           { label: "MONTHLY BUDGET", value: money(budgetTotal), note: budgetTotal ? `${money(budgetTotal - total)} ${budgetTotal >= total ? "remaining" : "over budget"}` : "Set category budgets" },
           { label: "VS PREVIOUS MONTH", value: previousTotal ? `${total >= previousTotal ? "+" : "−"}${Math.abs(((total - previousTotal) / previousTotal) * 100).toFixed(1)}%` : "—", note: previousTotal ? `${money(previousTotal)} previous spend` : "No previous-month spend" },
-          { label: "RECURRING SCHEDULES", value: String(recurringExpenses.length), note: "Not auto-counted as new spend" },
+          { label: "RECURRING SCHEDULES", value: String(recurringExpenses.length), note: "Confirm payments to record spend" },
         ].map((item) => (
           <div key={item.label} style={{ ...cardStyle, padding: 17 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>{item.label}</div>
@@ -610,9 +669,30 @@ export default function ExpenseSection() {
       </div>}
 
       {activeTab === "recurring" && <div className="expense-card" style={cardStyle}>
-        <h3 style={{ margin: 0, fontSize: 18 }}>Recurring schedules</h3><p style={{ color: "#718096", fontSize: 13, margin: "5px 0 16px" }}>These entries are not automatically copied into future months. Add a new transaction only after confirming that payment happened.</p>
-        {recurringExpenses.length ? <div style={{ display: "grid", gap: 10 }}>{recurringExpenses.map((e,i)=><div key={`${e.recurringKey||e.description}-${i}`} style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", border: "1px solid #edf1f5", padding: 14, borderRadius: 12 }}><div><strong>{e.description}</strong><div style={{ color: "#718096", fontSize: 12, marginTop: 5 }}>{e.category} · {e.owner || "No owner specified"}</div></div><div style={{ fontWeight: 800 }}>{money(Number(e.amount)||0)} <span style={{ fontSize: 11, fontWeight: 600, color: "#718096" }}>/ month</span></div></div>)}</div> : <p style={{ color: "#718096", fontSize: 13 }}>No monthly schedules yet. Choose “Monthly schedule” when adding an expense to mark it as recurring.</p>}
-        <div style={{ marginTop: 16, background: "#fff8e8", color: "#7c5b20", padding: 12, borderRadius: 10, fontSize: 12 }}>Legacy note: existing monthly recurring records remain saved, but this redesign no longer auto-generates future dated expense rows.</div>
+        <h3 style={{ margin: 0, fontSize: 18 }}>Recurring schedules</h3>
+        <p style={{ color: "#718096", fontSize: 13, margin: "5px 0 16px" }}>These entries are not automatically copied into future months. Add a new transaction only after confirming that payment happened.</p>
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 14, marginBottom: 18 }}>
+          <h4 style={{ margin: "0 0 12px" }}>{editingScheduleId ? "Edit schedule" : "Add a recurring schedule"}</h4>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+            <label style={labelStyle}>DESCRIPTION<input style={fieldStyle} value={scheduleDraft.description} placeholder="e.g. Internet bill" onChange={e=>setScheduleDraft({...scheduleDraft,description:e.target.value})}/></label>
+            <label style={labelStyle}>AMOUNT (₹)<input style={fieldStyle} type="number" min="0.01" step="0.01" value={scheduleDraft.amount} onChange={e=>setScheduleDraft({...scheduleDraft,amount:e.target.value})}/></label>
+            <label style={labelStyle}>CATEGORY<select style={fieldStyle} value={scheduleDraft.category} onChange={e=>setScheduleDraft({...scheduleDraft,category:e.target.value})}><option value="">Choose category</option>{EXPENSE_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label>
+            <label style={labelStyle}>OWNER<input style={fieldStyle} value={scheduleDraft.owner} placeholder="Optional" onChange={e=>setScheduleDraft({...scheduleDraft,owner:e.target.value})}/></label>
+            <label style={labelStyle}>FREQUENCY<select style={fieldStyle} value={scheduleDraft.frequency} onChange={e=>setScheduleDraft({...scheduleDraft,frequency:e.target.value as Frequency})}>{(["Weekly","Monthly","Quarterly","Yearly"] as Frequency[]).map(f=><option key={f}>{f}</option>)}</select></label>
+            <label style={labelStyle}>FIRST DUE DATE<input style={fieldStyle} type="date" value={scheduleDraft.startDate} onChange={e=>setScheduleDraft({...scheduleDraft,startDate:e.target.value})}/></label>
+            <label style={labelStyle}>LAST DUE DATE (OPTIONAL)<input style={fieldStyle} type="date" value={scheduleDraft.endDate} min={scheduleDraft.startDate} onChange={e=>setScheduleDraft({...scheduleDraft,endDate:e.target.value})}/></label>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}><button style={primaryStyle} onClick={saveSchedule}>{editingScheduleId ? "Save changes" : "＋ Save schedule"}</button>{editingScheduleId && <button style={buttonStyle} onClick={()=>{setEditingScheduleId(null);setScheduleDraft({id:"",description:"",amount:"",category:"",owner:"",frequency:"Monthly",startDate:today(),endDate:"",paused:false,paidOccurrences:[]})}}>Cancel edit</button>}</div>
+        </div>
+        <h4 style={{ margin: "0 0 10px" }}>Scheduled payments · {monthLabel(monthFilter)}</h4>
+        {schedules.length ? <div style={{ display: "grid", gap: 12 }}>{schedules.map(schedule=>{
+          const occurrences = schedule.paused ? [] : occurrenceDates(schedule, monthFilter);
+          return <div key={schedule.id} style={{ border: "1px solid #edf1f5", padding: 14, borderRadius: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><strong>{schedule.description}</strong><div style={{ color: "#718096", fontSize: 12, marginTop: 5 }}>{schedule.category} · {schedule.owner || "No owner specified"} · {schedule.frequency}{schedule.paused ? " · Paused" : ""}</div></div><strong>{money(Number(schedule.amount)||0)}</strong></div>
+            {schedule.paused ? <p style={{ fontSize: 12, color: "#718096", marginBottom: 0 }}>Schedule paused; no payment reminders shown.</p> : occurrences.length ? <div style={{ display: "grid", gap: 8, marginTop: 12 }}>{occurrences.map(due=>{const paid=schedule.paidOccurrences.includes(due)||expenses.some(e=>(e as Expense & {recurringOccurrence?:string}).recurringOccurrence===`${schedule.id}:${due}`);const overdue=!paid && due<today();return <div key={due} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", background: paid?"#eef8f1":overdue?"#fff1f0":"#f7f9fc", padding: 10, borderRadius: 9 }}><span style={{ fontSize: 13 }}>{due} · <strong style={{ color: paid?"#286348":overdue?"#b42318":"#526174" }}>{paid?"Confirmed":overdue?"Overdue":"Upcoming"}</strong></span>{!paid&&<button style={buttonStyle} onClick={()=>confirmOccurrence(schedule,due)}>Confirm payment</button>}</div>})}</div> : <p style={{ color: "#718096", fontSize: 12, marginBottom: 0 }}>No due dates for this month.</p>}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}><button style={buttonStyle} onClick={()=>{setEditingScheduleId(schedule.id);setScheduleDraft({...schedule})}}>Edit</button><button style={buttonStyle} onClick={()=>persistSchedules(schedules.map(s=>s.id===schedule.id?{...s,paused:!s.paused}:s))}>{schedule.paused?"Resume":"Pause"}</button><button style={{...buttonStyle,color:"#b42318"}} onClick={()=>{if(window.confirm(`Delete recurring schedule “${schedule.description}”? Existing transactions will remain.`))persistSchedules(schedules.filter(s=>s.id!==schedule.id))}}>Delete schedule</button></div>
+          </div>})}</div> : <p style={{ color: "#718096", fontSize: 13 }}>No recurring schedules yet. Add one above to track upcoming payments.</p>}
+        <div style={{ marginTop: 16, background: "#fff8e8", color: "#7c5b20", padding: 12, borderRadius: 10, fontSize: 12 }}>Only confirmed payments become actual transactions and count toward spending and budgets. Scheduled amounts alone are never counted as actual spend.</div>
       </div>}
 
       {activeTab === "reports" && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 16 }}>
