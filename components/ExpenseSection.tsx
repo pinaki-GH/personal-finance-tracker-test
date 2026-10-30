@@ -21,6 +21,7 @@ type Expense = {
   expenseDate: Date | null;
   recurring: RecurringType;
   recurringKey?: string;
+  recurringOccurrence?: string;
 };
 type StoredExpense = Omit<Expense, "expenseDate"> & { expenseDate: string | null };
 type BudgetStore = Record<string, Record<string, number>>;
@@ -250,6 +251,43 @@ export default function ExpenseSection() {
     persistExpenses([...expenses, transaction]);
     persistSchedules(schedules.map((s) => s.id === schedule.id ? { ...s, paidOccurrences: [...s.paidOccurrences, dueDate] } : s));
     setNotice("Payment confirmed and added to actual spending.");
+  };
+  const unconfirmOccurrence = (schedule: RecurringSchedule, dueDate: string) => {
+    const occurrenceKey = `${schedule.id}:${dueDate}`;
+    const linkedTransactions = expenses.filter((expense) => expense.recurringOccurrence === occurrenceKey);
+    const isMarkedPaid = schedule.paidOccurrences.includes(dueDate);
+
+    if (!isMarkedPaid && linkedTransactions.length === 0) {
+      setNotice("This scheduled payment is not currently confirmed.");
+      return;
+    }
+
+    if (linkedTransactions.length > 1) {
+      setNotice("This payment has multiple linked transactions. No changes were made; please review the expense list first.");
+      return;
+    }
+
+    const linked = linkedTransactions[0];
+    const transactionWasEdited = !!linked && (
+      linked.description !== schedule.description ||
+      Number(linked.amount) !== Number(schedule.amount) ||
+      linked.category !== schedule.category ||
+      linked.owner !== schedule.owner ||
+      dateInput(linked.expenseDate) !== dueDate
+    );
+
+    const prompt = transactionWasEdited
+      ? `The expense linked to ${schedule.description} on ${dueDate} appears to have been edited. Unconfirming will remove that linked expense from actual spending. Continue?`
+      : `Unconfirm ${schedule.description} for ${dueDate}? The linked expense will be removed from actual spending.`;
+    if (!window.confirm(prompt)) return;
+
+    // Remove only the transaction created for this exact schedule occurrence.
+    // Keep any unrelated expenses and the recurring schedule itself.
+    if (linked) persistExpenses(expenses.filter((expense) => expense.recurringOccurrence !== occurrenceKey));
+    persistSchedules(schedules.map((item) => item.id === schedule.id
+      ? { ...item, paidOccurrences: item.paidOccurrences.filter((date) => date !== dueDate) }
+      : item));
+    setNotice("Payment unconfirmed. You can confirm this occurrence again later.");
   };
   const monthlyTrend = useMemo(() => {
     const [year, month] = monthFilter.split("-").map(Number);
@@ -729,7 +767,9 @@ export default function ExpenseSection() {
           const occurrences = schedule.paused ? [] : occurrenceDates(schedule, monthFilter);
           return <div key={schedule.id} style={{ border: "1px solid #edf1f5", padding: 14, borderRadius: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><div><strong>{schedule.description}</strong><div style={{ color: "#718096", fontSize: 12, marginTop: 5 }}>{schedule.category} · {schedule.owner || "No owner specified"} · {schedule.frequency}{schedule.paused ? " · Paused" : ""}</div></div><strong>{money(Number(schedule.amount)||0)}</strong></div>
-            {schedule.paused ? <p style={{ fontSize: 12, color: "#718096", marginBottom: 0 }}>Schedule paused; no payment reminders shown.</p> : occurrences.length ? <div style={{ display: "grid", gap: 8, marginTop: 12 }}>{occurrences.map(due=>{const paid=schedule.paidOccurrences.includes(due)||expenses.some(e=>(e as Expense & {recurringOccurrence?:string}).recurringOccurrence===`${schedule.id}:${due}`);const overdue=!paid && due<today();return <div key={due} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", background: paid?"#eef8f1":overdue?"#fff1f0":"#f7f9fc", padding: 10, borderRadius: 9 }}><span style={{ fontSize: 13 }}>{due} · <strong style={{ color: paid?"#286348":overdue?"#b42318":"#526174" }}>{paid?"Confirmed":overdue?"Overdue":"Upcoming"}</strong></span>{!paid&&<button style={buttonStyle} onClick={()=>confirmOccurrence(schedule,due)}>Confirm payment</button>}</div>})}</div> : <p style={{ color: "#718096", fontSize: 12, marginBottom: 0 }}>No due dates for this month.</p>}
+            {schedule.paused ? <p style={{ fontSize: 12, color: "#718096", marginBottom: 0 }}>Schedule paused; no payment reminders shown.</p> : occurrences.length ? <div style={{ display: "grid", gap: 8, marginTop: 12 }}>{occurrences.map(due=>{const paid=schedule.paidOccurrences.includes(due)||expenses.some(e=>(e as Expense & {recurringOccurrence?:string}).recurringOccurrence===`${schedule.id}:${due}`);const overdue=!paid && due<today();return <div key={due} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", background: paid?"#eef8f1":overdue?"#fff1f0":"#f7f9fc", padding: 10, borderRadius: 9 }}><span style={{ fontSize: 13 }}>{due} · <strong style={{ color: paid?"#286348":overdue?"#b42318":"#526174" }}>{paid?"Confirmed":overdue?"Overdue":"Upcoming"}</strong></span>{paid
+              ? <button style={buttonStyle} onClick={() => unconfirmOccurrence(schedule, due)}>Unconfirm payment</button>
+              : <button style={buttonStyle} onClick={() => confirmOccurrence(schedule, due)}>Confirm payment</button>}</div>})}</div> : <p style={{ color: "#718096", fontSize: 12, marginBottom: 0 }}>No due dates for this month.</p>}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}><button style={buttonStyle} onClick={()=>{setEditingScheduleId(schedule.id);setScheduleDraft({...schedule})}}>Edit</button><button style={buttonStyle} onClick={()=>persistSchedules(schedules.map(s=>s.id===schedule.id?{...s,paused:!s.paused}:s))}>{schedule.paused?"Resume":"Pause"}</button><button style={{...buttonStyle,color:"#b42318"}} onClick={()=>{if(window.confirm(`Delete recurring schedule “${schedule.description}”? Existing transactions will remain.`))deleteSchedule(schedule.id)}}>Delete schedule</button></div>
           </div>})}</div> : <p style={{ color: "#718096", fontSize: 13 }}>No recurring schedules yet. Add one above to track upcoming payments.</p>}
         <div style={{ marginTop: 16, background: "#fff8e8", color: "#7c5b20", padding: 12, borderRadius: 10, fontSize: 12 }}>Only confirmed payments become actual transactions and count toward spending and budgets. Scheduled amounts alone are never counted as actual spend.</div>
