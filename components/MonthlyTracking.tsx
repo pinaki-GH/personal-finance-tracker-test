@@ -200,12 +200,13 @@ export default function MonthlyTracking() {
             <h3 style={{ marginTop: 0 }}>Assets in this snapshot</h3>
             {selectedSnapshot.assets.length === 0 ? <p>No assets were recorded in this snapshot.</p> : (
               <div className="table-scroll-wrapper" role="region" aria-label="Snapshot assets" tabIndex={0}>
-                <table className="data-table" style={{ minWidth: 600 }}>
-                  <thead><tr><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Asset Name</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Category</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value record date</th></tr></thead>
+                <table className="data-table" style={{ minWidth: 720 }}>
+                  <thead><tr><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Asset Name</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Category</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Owner</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value record date</th></tr></thead>
                   <tbody>{selectedSnapshot.assets.map((asset: any, index: number) => (
                     <tr key={`${asset.assetId || asset.assetName || "asset"}-${index}`}>
                       <td>{asset.assetName || "Unnamed asset"}</td>
                       <td>{asset.category || "—"}</td>
+                      <td>{asset.owner?.trim() || "—"}</td>
                       <td>{currency.format(numberValue(asset.assetValue))}</td>
                       <td>{asset.valueRecordDate ? String(asset.valueRecordDate).slice(0, 10) : "—"}</td>
                     </tr>
@@ -219,12 +220,13 @@ export default function MonthlyTracking() {
             <h3 style={{ marginTop: 0 }}>Liabilities in this snapshot</h3>
             {selectedSnapshot.liabilities.length === 0 ? <p>No liabilities were recorded in this snapshot.</p> : (
               <div className="table-scroll-wrapper" role="region" aria-label="Snapshot liabilities" tabIndex={0}>
-                <table className="data-table" style={{ minWidth: 600 }}>
-                  <thead><tr><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Liability</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Category</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value record date</th></tr></thead>
+                <table className="data-table" style={{ minWidth: 720 }}>
+                  <thead><tr><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Liability</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Category</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Owner</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value</th><th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value record date</th></tr></thead>
                   <tbody>{selectedSnapshot.liabilities.map((liability: any, index: number) => (
                     <tr key={`${liability.liabilityId || liability.liabilityName || "liability"}-${index}`}>
                       <td>{liability.liabilityName || "Unnamed liability"}</td>
                       <td>{liability.category || "—"}</td>
+                      <td>{liability.owner?.trim() || "—"}</td>
                       <td>{currency.format(numberValue(liability.liabilityValue))}</td>
                       <td>{liability.valueRecordDate ? String(liability.valueRecordDate).slice(0, 10) : "—"}</td>
                     </tr>
