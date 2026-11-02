@@ -163,8 +163,13 @@ export default function ExpenseSection() {
       (!q || [e.description, e.category, e.owner].some((v) => v.toLowerCase().includes(q))) &&
       (categoryFilter === "All categories" || e.category === categoryFilter) &&
       (ownerFilter === "All owners" || e.owner === ownerFilter)
-    ).slice().sort((a, b) => (b.expenseDate?.getTime() ?? 0) - (a.expenseDate?.getTime() ?? 0));
-  }, [monthExpenses, search, categoryFilter, ownerFilter]);
+    ).slice().sort((a, b) => {
+      const dateA = dateInput(a.expenseDate);
+      const dateB = dateInput(b.expenseDate);
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+      return expenses.indexOf(b) - expenses.indexOf(a);
+    });
+  }, [monthExpenses, expenses, search, categoryFilter, ownerFilter]);
   const total = monthExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const categoryTotals = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -644,6 +649,15 @@ export default function ExpenseSection() {
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <div><h3 style={{ margin: 0, fontSize: 18 }}>Expense List</h3><p style={{ color: "#718096", margin: "5px 0 0", fontSize: 13 }}>{filteredExpenses.length} transaction{filteredExpenses.length === 1 ? "" : "s"} · {money(filteredExpenses.reduce((s,e)=>s+(Number(e.amount)||0),0))} shown</p></div>
           <button style={buttonStyle} onClick={exportMonth}>Export month to Excel ↓</button>
+        </div>
+        <div className="expense-card" style={{ ...cardStyle, background: "#f7faf8", marginBottom: 18 }}>
+          <h4 style={{ margin: "0 0 5px", fontSize: 16 }}>Quick Add Expense</h4>
+          <p style={{ color: "#718096", fontSize: 13, margin: "0 0 14px" }}>
+            Add another transaction without leaving this list. Only saved transactions count as actual spending.
+          </p>
+          {formFields(form, setForm)}
+          {formError && <p role="alert" style={{ color: "#b42318", fontSize: 13 }}>{formError}</p>}
+          <button style={{ ...primaryStyle, marginTop: 14 }} onClick={addExpense}>＋ Save expense</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 16 }}>
           <input style={fieldStyle} placeholder="Search description, category, owner…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search expenses" />
