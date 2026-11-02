@@ -615,6 +615,22 @@ export default function LiabilitySection() {
           border-top: 1px solid #edf1f5;
           font-size: 13px;
           vertical-align: middle;
+          overflow-wrap: anywhere;
+          word-break: normal;
+        }
+        .liability-section .liability-table td,
+        .liability-section .liability-table th {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+        .liability-section .liability-table td input,
+        .liability-section .liability-table td select {
+          min-width: 0;
+          max-width: 100%;
+        }
+        .liability-section .liability-table-scroll {
+          overflow-x: auto !important;
+          -webkit-overflow-scrolling: touch;
         }
         .liability-section .data-table tbody tr:hover { background: #fbfcfd; }
         .liability-section .table-scroll-wrapper {
@@ -1049,7 +1065,7 @@ export default function LiabilitySection() {
               maxWidth: "100%",
               maxHeight: 420,
               overflowY: "auto",
-              overflowX: "hidden",
+              overflowX: "auto",
             }}
           >
             <table
