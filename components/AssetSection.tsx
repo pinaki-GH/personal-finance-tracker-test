@@ -78,7 +78,16 @@ function parseDate(value: string | null | undefined): Date | null {
     return null;
   }
 
-  const date = new Date(value);
+  // Parse date-only values as local calendar dates to avoid timezone shifts.
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  const date = dateOnlyMatch
+    ? new Date(
+        Number(dateOnlyMatch[1]),
+        Number(dateOnlyMatch[2]) - 1,
+        Number(dateOnlyMatch[3])
+      )
+    : new Date(value);
 
   return Number.isNaN(date.getTime()) ? null : date;
 }
@@ -165,12 +174,10 @@ export default function AssetSection() {
   const persist = (updated: Asset[]) => {
     const dehydrated: StoredAsset[] = updated.map(asset => ({
       ...asset,
-      purchaseDate: asset.purchaseDate
-        ? asset.purchaseDate.toISOString()
-        : null,
-      valueRecordDate: asset.valueRecordDate
-        ? asset.valueRecordDate.toISOString()
-        : null
+      // These are calendar dates, not timestamps. Store date-only values so
+      // UTC conversion cannot shift the date when a monthly snapshot is taken.
+      purchaseDate: asset.purchaseDate ? formatDate(asset.purchaseDate) : null,
+      valueRecordDate: asset.valueRecordDate ? formatDate(asset.valueRecordDate) : null
     }));
 
     saveData("assets", dehydrated);
