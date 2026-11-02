@@ -199,11 +199,13 @@ function getDateInputValue(date: Date | null): string {
 function toStoredLiability(liability: Liability): StoredLiability {
   return {
     ...liability,
+    // These are calendar dates, not timestamps. Store date-only values so
+    // UTC conversion cannot shift the date when a monthly snapshot is taken.
     commencementDate: liability.commencementDate
-      ? liability.commencementDate.toISOString()
+      ? formatDate(liability.commencementDate)
       : null,
     valueRecordDate: liability.valueRecordDate
-      ? liability.valueRecordDate.toISOString()
+      ? formatDate(liability.valueRecordDate)
       : null
   };
 }
