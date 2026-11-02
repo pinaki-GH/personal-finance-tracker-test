@@ -41,6 +41,22 @@ const formatSavedAt = (value: string) => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString("en-IN");
 };
 
+// Display calendar dates without UTC slicing. Date-only values are already
+// calendar dates; legacy ISO timestamps are converted to the local date.
+const formatRecordDate = (value: unknown): string => {
+  if (typeof value !== "string" || !value) return "—";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function MonthlyTracking() {
   const [month, setMonth] = useState(currentMonth);
   const [snapshots, setSnapshots] = useState<MonthlySnapshot[]>([]);
@@ -278,7 +294,7 @@ export default function MonthlyTracking() {
                       <td>{asset.category || "—"}</td>
                       <td>{asset.owner?.trim() || "—"}</td>
                       <td>{currency.format(numberValue(asset.assetValue))}</td>
-                      <td>{asset.valueRecordDate ? String(asset.valueRecordDate).slice(0, 10) : "—"}</td>
+                      <td>{formatRecordDate(asset.valueRecordDate)}</td>
                     </tr>
                   ))}</tbody>
                 </table>
@@ -298,7 +314,7 @@ export default function MonthlyTracking() {
                       <td>{liability.category || "—"}</td>
                       <td>{liability.owner?.trim() || "—"}</td>
                       <td>{currency.format(numberValue(liability.liabilityValue))}</td>
-                      <td>{liability.valueRecordDate ? String(liability.valueRecordDate).slice(0, 10) : "—"}</td>
+                      <td>{formatRecordDate(liability.valueRecordDate)}</td>
                     </tr>
                   ))}</tbody>
                 </table>
