@@ -436,8 +436,116 @@ export default function AssetSection() {
   // ================= RENDER =================
 
   return (
-    <section>
-      <h2>🏦 Assets</h2>
+    <section className="asset-section" style={{ color: "#172b4d", fontFamily: "inherit", display: "grid", gap: 18 }}>
+      <style>{`
+        .asset-section { min-width: 0; }
+        .asset-section > h2 {
+          margin: 5px 0 0;
+          font-size: 28px;
+          line-height: 1.2;
+          letter-spacing: -.04em;
+          color: #172b4d;
+        }
+        .asset-section .card {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 20px;
+          box-shadow: 0 4px 18px rgba(20, 39, 60, .04);
+          min-width: 0;
+        }
+        .asset-section h3 {
+          color: #24364b;
+          font-size: 16px;
+          letter-spacing: -.02em;
+        }
+        .asset-section p, .asset-section small { color: #718096; }
+        .asset-section label {
+          display: block;
+          margin-bottom: 7px;
+          color: #52637a;
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .asset-section input, .asset-section select {
+          width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+          padding: 11px 12px;
+          border: 1px solid #d9e2ec;
+          border-radius: 10px;
+          background: #fff;
+          color: #172b4d;
+          font: inherit;
+          font-size: 14px;
+        }
+        .asset-section input:focus, .asset-section select:focus {
+          outline: 2px solid rgba(23, 75, 59, .18);
+          border-color: #5d8b78;
+        }
+        .asset-section button {
+          border: 1px solid #d9e2ec;
+          border-radius: 10px;
+          padding: 10px 14px;
+          background: #fff;
+          color: #24364b;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background .15s ease, border-color .15s ease;
+        }
+        .asset-section button:hover { border-color: #b9c9d7; background: #f8fafc; }
+        .asset-section button.primary {
+          background: #174b3b;
+          border-color: #174b3b;
+          color: #fff;
+        }
+        .asset-section button.primary:hover { background: #103d30; }
+        .asset-section button.danger { color: #a12a2a; }
+        .asset-section .form-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+          gap: 14px;
+        }
+        .asset-section .data-table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 1050px;
+          color: #52637a;
+        }
+        .asset-section .data-table th {
+          text-align: left;
+          font-size: 11px;
+          letter-spacing: .06em;
+          color: #718096;
+          padding: 12px 10px;
+          background: #f7f9fc !important;
+          border-bottom: 1px solid #e8edf2;
+        }
+        .asset-section .data-table td {
+          padding: 13px 10px;
+          border-top: 1px solid #edf1f5;
+          font-size: 13px;
+          vertical-align: middle;
+        }
+        .asset-section .data-table tbody tr:hover { background: #fbfcfd; }
+        .asset-section .table-scroll-wrapper {
+          border: 1px solid #e8edf2;
+          border-radius: 12px;
+          background: #fff;
+        }
+        .asset-section .card-actions { margin-top: 18px !important; }
+        @media (max-width: 600px) {
+          .asset-section .card { padding: 14px; }
+          .asset-section > h2 { font-size: 25px; }
+        }
+      `}</style>
+      <header style={{ display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ color: "#5d8b78", fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase" }}>PERSONAL FINANCE</div>
+          <h2>Asset Tracker</h2>
+          <p style={{ margin: "5px 0 0", color: "#718096", fontSize: 14 }}>A clear view of what you own and how your portfolio is allocated.</p>
+        </div>
+      </header>
 
       {/* PORTFOLIO SUMMARY */}
 
@@ -450,37 +558,38 @@ export default function AssetSection() {
         }}
       >
         <div className="card">
-          <h3>Total Asset Value</h3>
-          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>TOTAL ASSET VALUE</div>
+          <p style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-.04em", margin: "9px 0 5px", color: "#174b3b", overflowWrap: "anywhere" }}>
             {formatCurrency(totalAssetValue)}
           </p>
           <small>Across all recorded assets</small>
         </div>
 
         <div className="card">
-          <h3>Total Assets</h3>
-          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>TOTAL ASSETS</div>
+          <p style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-.04em", margin: "9px 0 5px" }}>
             {assets.length}
           </p>
           <small>Recorded asset entries</small>
         </div>
 
         <div className="card">
-          <h3>Asset Categories</h3>
-          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>ASSET CATEGORIES</div>
+          <p style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-.04em", margin: "9px 0 5px" }}>
             {totalCategories}
           </p>
           <small>Categories currently represented</small>
         </div>
 
         <div className="card">
-          <h3>Valuation Updates</h3>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>VALUATION UPDATES</div>
           <p
             style={{
-              fontSize: 24,
-              fontWeight: 700,
-              margin: 0,
-              color: assetsNeedingValuation > 0 ? "#b45309" : "inherit"
+              fontSize: 23,
+              fontWeight: 800,
+              letterSpacing: "-.04em",
+              margin: "9px 0 5px",
+              color: assetsNeedingValuation > 0 ? "#b45309" : "#286348"
             }}
           >
             {assetsNeedingValuation}
