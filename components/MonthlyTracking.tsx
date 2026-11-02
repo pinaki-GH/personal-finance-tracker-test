@@ -117,11 +117,81 @@ export default function MonthlyTracking() {
   const hasSnapshot = Boolean(selectedSnapshot);
 
   return (
-    <section>
-      <h2>🗓️ Monthly Tracking</h2>
-      <p style={{ marginTop: -4, maxWidth: 850 }}>
-        Save a point-in-time copy of your current asset and liability register for a calendar month. Saved snapshots are separate from your live records, so later edits will not change earlier snapshots.
-      </p>
+    <section className="monthly-tracking-section" style={{ color: "#172b4d", fontFamily: "inherit", display: "grid", gap: 18 }}>
+      <style>{`
+        .monthly-tracking-section { min-width: 0; }
+        .monthly-tracking-section > header h2 {
+          margin: 5px 0 0; font-size: 28px; line-height: 1.2;
+          letter-spacing: -.04em; color: #172b4d;
+        }
+        .monthly-tracking-section .card {
+          background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+          padding: 20px; box-shadow: 0 4px 18px rgba(20, 39, 60, .04); min-width: 0;
+        }
+        .monthly-tracking-section h3, .monthly-tracking-section h4 {
+          color: #24364b; font-size: 16px; letter-spacing: -.02em;
+        }
+        .monthly-tracking-section p, .monthly-tracking-section small { color: #718096; }
+        .monthly-tracking-section label {
+          display: block; margin-bottom: 7px; color: #52637a;
+          font-size: 12px; font-weight: 700;
+        }
+        .monthly-tracking-section input, .monthly-tracking-section select {
+          width: 100%; min-width: 0; box-sizing: border-box; padding: 11px 12px;
+          border: 1px solid #d9e2ec; border-radius: 10px; background: #fff;
+          color: #172b4d; font: inherit; font-size: 14px;
+        }
+        .monthly-tracking-section input:focus, .monthly-tracking-section select:focus {
+          outline: 2px solid rgba(23, 75, 59, .18); border-color: #5d8b78;
+        }
+        .monthly-tracking-section button {
+          border: 1px solid #d9e2ec; border-radius: 10px; padding: 10px 14px;
+          background: #fff; color: #24364b; font-weight: 700; cursor: pointer;
+          transition: background .15s ease, border-color .15s ease;
+        }
+        .monthly-tracking-section button:hover { border-color: #b9c9d7; background: #f8fafc; }
+        .monthly-tracking-section button.primary {
+          background: #174b3b; border-color: #174b3b; color: #fff;
+        }
+        .monthly-tracking-section button.primary:hover { background: #103d30; }
+        .monthly-tracking-section button:disabled { opacity: .5; cursor: not-allowed; }
+        .monthly-tracking-section .summary-card {
+          background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+          padding: 18px; box-shadow: 0 4px 18px rgba(20, 39, 60, .04);
+        }
+        .monthly-tracking-section .summary-card.highlight {
+          border-color: #c9ddd3; background: #f5faf7;
+        }
+        .monthly-tracking-section .summary-card strong { color: #172b4d; letter-spacing: -.03em; }
+        .monthly-tracking-section .summary-card div { color: #718096; font-size: 12px !important; font-weight: 700; }
+        .monthly-tracking-section .data-table {
+          width: 100%; border-collapse: collapse; color: #52637a;
+        }
+        .monthly-tracking-section .data-table th {
+          text-align: left; font-size: 11px; letter-spacing: .06em; color: #718096;
+          padding: 12px 10px; background: #f7f9fc !important; border-bottom: 1px solid #e8edf2;
+        }
+        .monthly-tracking-section .data-table td {
+          padding: 13px 10px; border-top: 1px solid #edf1f5; font-size: 13px; vertical-align: middle;
+        }
+        .monthly-tracking-section .data-table tbody tr:hover { background: #fbfcfd; }
+        .monthly-tracking-section .table-scroll-wrapper {
+          border: 1px solid #e8edf2; border-radius: 12px; background: #fff;
+        }
+        @media (max-width: 600px) {
+          .monthly-tracking-section .card, .monthly-tracking-section .summary-card { padding: 14px; }
+          .monthly-tracking-section > header h2 { font-size: 25px; }
+        }
+      `}</style>
+      <header>
+        <div>
+          <div style={{ color: "#5d8b78", fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase" }}>PERSONAL FINANCE</div>
+          <h2>Monthly Tracking</h2>
+          <p style={{ margin: "5px 0 0", maxWidth: 850, fontSize: 14 }}>
+            Preserve monthly snapshots of your assets, liabilities and net worth over time.
+          </p>
+        </div>
+      </header>
 
       <div className="card">
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 16 }}>
