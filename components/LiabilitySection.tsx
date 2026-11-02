@@ -16,7 +16,7 @@ const LIABILITY_CATEGORIES = [
 
 const ALL_FILTER = "All";
 const UNASSIGNED_FILTER = "__UNASSIGNED__";
-const STALE_VALUATION_DAYS = 90;
+const STALE_VALUATION_DAYS = 365;
 
 type Liability = {
   liabilityName: string;
@@ -524,14 +524,120 @@ export default function LiabilitySection() {
   // ================= RENDER =================
 
   return (
-    <section>
-      <h2>📉 Liabilities</h2>
-
-      <p className="section-description">
-        Track outstanding balances, review liability categories, and keep
-        valuation records up to date. Outstanding balances are used when
-        calculating your net worth.
-      </p>
+    <section className="liability-section" style={{ color: "#172b4d", fontFamily: "inherit", display: "grid", gap: 18 }}>
+      <style>{`
+        .liability-section { min-width: 0; }
+        .liability-section > h2 {
+          margin: 5px 0 0;
+          font-size: 28px;
+          line-height: 1.2;
+          letter-spacing: -.04em;
+          color: #172b4d;
+        }
+        .liability-section .card {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 20px;
+          box-shadow: 0 4px 18px rgba(20, 39, 60, .04);
+          min-width: 0;
+        }
+        .liability-section h3, .liability-section h4 {
+          color: #24364b;
+          font-size: 16px;
+          letter-spacing: -.02em;
+        }
+        .liability-section p, .liability-section small { color: #718096; }
+        .liability-section label {
+          display: block;
+          margin-bottom: 7px;
+          color: #52637a;
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .liability-section input, .liability-section select {
+          width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+          padding: 11px 12px;
+          border: 1px solid #d9e2ec;
+          border-radius: 10px;
+          background: #fff;
+          color: #172b4d;
+          font: inherit;
+          font-size: 14px;
+        }
+        .liability-section input:focus, .liability-section select:focus {
+          outline: 2px solid rgba(23, 75, 59, .18);
+          border-color: #5d8b78;
+        }
+        .liability-section button {
+          border: 1px solid #d9e2ec;
+          border-radius: 10px;
+          padding: 10px 14px;
+          background: #fff;
+          color: #24364b;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background .15s ease, border-color .15s ease;
+        }
+        .liability-section button:hover { border-color: #b9c9d7; background: #f8fafc; }
+        .liability-section button.primary {
+          background: #174b3b;
+          border-color: #174b3b;
+          color: #fff;
+        }
+        .liability-section button.primary:hover { background: #103d30; }
+        .liability-section button.danger { color: #a12a2a; }
+        .liability-section button:disabled { opacity: .5; cursor: not-allowed; }
+        .liability-section .form-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+          gap: 14px;
+        }
+        .liability-section .data-table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 1050px;
+          color: #52637a;
+        }
+        .liability-section .data-table th {
+          text-align: left;
+          font-size: 11px;
+          letter-spacing: .06em;
+          color: #718096;
+          padding: 12px 10px;
+          background: #f7f9fc !important;
+          border-bottom: 1px solid #e8edf2;
+        }
+        .liability-section .data-table td {
+          padding: 13px 10px;
+          border-top: 1px solid #edf1f5;
+          font-size: 13px;
+          vertical-align: middle;
+        }
+        .liability-section .data-table tbody tr:hover { background: #fbfcfd; }
+        .liability-section .table-scroll-wrapper {
+          border: 1px solid #e8edf2;
+          border-radius: 12px;
+          background: #fff;
+        }
+        .liability-section .card-actions { margin-top: 18px !important; }
+        .liability-section .section-description { color: #718096; }
+        .liability-section .category-allocation-track { background: #edf2f5 !important; }
+        .liability-section .category-allocation-bar { background: #5d8b78 !important; }
+        @media (max-width: 600px) {
+          .liability-section .card { padding: 14px; }
+          .liability-section > h2 { font-size: 25px; }
+        }
+      `}</style>
+      <header style={{ display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ color: "#5d8b78", fontSize: 11, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase" }}>PERSONAL FINANCE</div>
+          <h2>Liability Tracker</h2>
+          <p style={{ margin: "5px 0 0", color: "#718096", fontSize: 14 }}>A clear view of outstanding balances and how your liabilities are distributed.</p>
+        </div>
+      </header>
 
       {/* SUMMARY CARDS */}
 
@@ -544,27 +650,29 @@ export default function LiabilitySection() {
         }}
       >
         <div className="card">
-          <h3>Total Outstanding Liabilities</h3>
-          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{formatCurrency(totalLiabilityValue)}</p>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>TOTAL OUTSTANDING LIABILITIES</div>
+          <p style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-.04em", margin: "9px 0 5px", color: "#174b3b", overflowWrap: "anywhere" }}>{formatCurrency(totalLiabilityValue)}</p>
           <small>Across all recorded liabilities</small>
         </div>
 
         <div className="card">
-          <h3>Total Liabilities</h3>
-          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{liabilities.length}</p>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>TOTAL LIABILITIES</div>
+          <p style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-.04em", margin: "9px 0 5px" }}>{liabilities.length}</p>
           <small>Recorded liability entries</small>
         </div>
 
         <div className="card">
-          <h3>Liability Categories</h3>
-          <p style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{totalCategories}</p>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>LIABILITY CATEGORIES</div>
+          <p style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-.04em", margin: "9px 0 5px" }}>{totalCategories}</p>
           <small>Categories currently represented</small>
         </div>
 
         <div className="card">
-          <h3>Valuation Updates</h3>
-          <p style={{ fontSize: 24, fontWeight: 700, margin: 0, color: liabilitiesNeedingValuation > 0 ? "#b45309" : "inherit" }}>{liabilitiesNeedingValuation}</p>
-          <small>Missing, future-dated, or older than {STALE_VALUATION_DAYS} days</small>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", color: "#718096" }}>VALUATION UPDATES</div>
+          <p style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-.04em", margin: "9px 0 5px", color: liabilitiesNeedingValuation > 0 ? "#b45309" : "#286348" }}>{liabilitiesNeedingValuation}</p>
+          <span className="summary-description">
+            Missing, future-dated, or older than {STALE_VALUATION_DAYS} days
+          </span>
         </div>
       </div>
 
@@ -932,30 +1040,53 @@ export default function LiabilitySection() {
           </div>
         ) : (
           <div
-            className="table-scroll-wrapper"
+            className="table-scroll-wrapper liability-table-scroll"
             role="region"
-            aria-label="Liability register table; scroll horizontally to view all columns"
+            aria-label="Liability register table"
             tabIndex={0}
             style={{
               width: "100%",
               maxWidth: "100%",
-              overflowX: "auto",
-              WebkitOverflowScrolling: "touch",
+              maxHeight: 420,
+              overflowY: "auto",
+              overflowX: "hidden",
             }}
           >
-            <table className="data-table wide-table" style={{ minWidth: 1050 }}>
+            <table
+              className="data-table liability-table"
+              style={{
+                width: "100%",
+                minWidth: 0,
+                tableLayout: "fixed",
+                marginTop: 0,
+              }}
+            >
+              <colgroup>
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "8%" }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Liability Name</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Category</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Commencement Date</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Outstanding Value</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Value Record Date</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Liability ID</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>ID Description</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Owner</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Institution</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc" }}>Actions</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Liability Name</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Category</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Commencement Date</th>
+                  <th className="numeric-cell" style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Outstanding Value</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Value Record Date</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Valuation Status</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Liability ID</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>ID Description</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Owner</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Institution</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Actions</th>
                 </tr>
               </thead>
 
@@ -1056,6 +1187,22 @@ export default function LiabilitySection() {
                           </td>
 
                           <td>
+                            <span
+                              className={
+                                getValuationStatus(
+                                  editForm.valueRecordDate
+                                ).className
+                              }
+                            >
+                              {
+                                getValuationStatus(
+                                  editForm.valueRecordDate
+                                ).label
+                              }
+                            </span>
+                          </td>
+
+                          <td>
                             <input
                               aria-label="Liability ID"
                               type="text"
@@ -1109,17 +1256,19 @@ export default function LiabilitySection() {
                           </td>
 
                           <td className="actions">
-                            <button
+                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                              <button
                                 type="button"
                                 className="primary"
                                 onClick={saveEdit}
                               >
                                 Save
-                            </button>
+                              </button>
 
-                            <button type="button" onClick={cancelEdit} style={{ marginLeft: 8 }}>
-                              Cancel
-                            </button>
+                              <button type="button" onClick={cancelEdit}>
+                                Cancel
+                              </button>
+                            </div>
                           </td>
                         </>
                       ) : (
@@ -1144,24 +1293,16 @@ export default function LiabilitySection() {
                           </td>
 
                           <td>
-                            <div>
-                              {formatDate(liability.valueRecordDate) || "—"}
-                            </div>
+                            {formatDate(liability.valueRecordDate) || "—"}
+                          </td>
 
-                            {needsValuationUpdate(liability) && (
-                              <small
-                                title={valuationStatus.description}
-                                style={{
-                                  display: "block",
-                                  color: "#b45309",
-                                  marginTop: 4
-                                }}
-                              >
-                                {liability.valueRecordDate
-                                  ? "Update recommended"
-                                  : "Date missing"}
-                              </small>
-                            )}
+                          <td>
+                            <span
+                              className={valuationStatus.className}
+                              title={valuationStatus.description}
+                            >
+                              {valuationStatus.label}
+                            </span>
                           </td>
 
                           <td>{liability.liabilityId || "—"}</td>
@@ -1173,20 +1314,22 @@ export default function LiabilitySection() {
                           <td>{liability.institution || "—"}</td>
 
                           <td className="actions">
-                            <button
+                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                              <button
                                 type="button"
                                 onClick={() => startEdit(originalIndex)}
                               >
                                 Edit
-                            </button>
+                              </button>
 
-                            <button
-                              type="button"
-                              className="danger"
-                              onClick={() => deleteLiability(originalIndex)}
-                            >
-                              Delete
-                            </button>
+                              <button
+                                type="button"
+                                className="danger"
+                                onClick={() => deleteLiability(originalIndex)}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </>
                       )}
