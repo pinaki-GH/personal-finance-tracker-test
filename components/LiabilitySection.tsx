@@ -630,21 +630,6 @@ export default function LiabilitySection() {
           min-width: 0;
           max-width: 100%;
         }
-        .liability-section .liability-table td.actions {
-          white-space: nowrap;
-        }
-        .liability-section .liability-table .action-buttons {
-          display: flex;
-          flex-wrap: nowrap !important;
-          align-items: center;
-          justify-content: flex-start;
-          gap: 8px;
-          white-space: nowrap;
-        }
-        .liability-section .liability-table .action-buttons button {
-          flex: 0 0 auto;
-          padding: 8px 10px;
-        }
         .liability-section .liability-table-scroll {
           overflow-x: auto !important;
           -webkit-overflow-scrolling: touch;
@@ -1089,37 +1074,37 @@ export default function LiabilitySection() {
               className="data-table liability-table"
               style={{
                 width: "100%",
-                minWidth: 0,
+                minWidth: 1400,
                 tableLayout: "fixed",
                 marginTop: 0,
               }}
             >
               <colgroup>
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "7%" }} />
-                <col style={{ width: "8%" }} />
                 <col style={{ width: "9%" }} />
-                <col style={{ width: "8%" }} />
                 <col style={{ width: "7%" }} />
-                <col style={{ width: "7%" }} />
-                <col style={{ width: "9%" }} />
                 <col style={{ width: "9%" }} />
                 <col style={{ width: "10%" }} />
-                <col style={{ width: "16%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "7%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "13%" }} />
               </colgroup>
               <thead>
                 <tr>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Liability Name</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Category</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Commencement Date</th>
-                  <th className="numeric-cell" style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Outstanding Value</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Value Record Date</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Valuation Status</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Liability ID</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>ID Description</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Owner</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Institution</th>
-                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "anywhere" }}>Actions</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Liability Name</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Category</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Commencement Date</th>
+                  <th className="numeric-cell" style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Outstanding Value</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Value Record Date</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Valuation Status</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Liability ID</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>ID Description</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Owner</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Institution</th>
+                  <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#f8fafc", overflowWrap: "break-word" }}>Actions</th>
                 </tr>
               </thead>
 
@@ -1289,7 +1274,7 @@ export default function LiabilitySection() {
                           </td>
 
                           <td className="actions">
-                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "nowrap", whiteSpace: "nowrap", gap: 8 }}>
                               <button
                                 type="button"
                                 className="primary"
@@ -1347,7 +1332,7 @@ export default function LiabilitySection() {
                           <td>{liability.institution || "—"}</td>
 
                           <td className="actions">
-                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                            <div className="action-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "nowrap", whiteSpace: "nowrap", gap: 8 }}>
                               <button
                                 type="button"
                                 onClick={() => startEdit(originalIndex)}
