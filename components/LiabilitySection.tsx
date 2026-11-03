@@ -630,6 +630,21 @@ export default function LiabilitySection() {
           min-width: 0;
           max-width: 100%;
         }
+        .liability-section .liability-table td.actions {
+          white-space: nowrap;
+        }
+        .liability-section .liability-table .action-buttons {
+          display: flex;
+          flex-wrap: nowrap !important;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 8px;
+          white-space: nowrap;
+        }
+        .liability-section .liability-table .action-buttons button {
+          flex: 0 0 auto;
+          padding: 8px 10px;
+        }
         .liability-section .liability-table-scroll {
           overflow-x: auto !important;
           -webkit-overflow-scrolling: touch;
@@ -1081,16 +1096,16 @@ export default function LiabilitySection() {
             >
               <colgroup>
                 <col style={{ width: "10%" }} />
+                <col style={{ width: "7%" }} />
                 <col style={{ width: "8%" }} />
                 <col style={{ width: "9%" }} />
-                <col style={{ width: "10%" }} />
+                <col style={{ width: "8%" }} />
+                <col style={{ width: "7%" }} />
+                <col style={{ width: "7%" }} />
                 <col style={{ width: "9%" }} />
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "8%" }} />
+                <col style={{ width: "9%" }} />
                 <col style={{ width: "10%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "8%" }} />
+                <col style={{ width: "16%" }} />
               </colgroup>
               <thead>
                 <tr>
