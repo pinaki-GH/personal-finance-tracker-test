@@ -7,7 +7,7 @@ import { exportToExcel } from "../utils/exportToExcel";
 const EXPENSE_CATEGORIES = [
   "Housing", "Groceries", "Shopping", "Utilities", "Insurance", "Transport", "Fuel",
   "Healthcare", "Education", "Entertainment", "Food Delivery", "Dining Out", "Travel",
-  "EMI / Loan Repayment", "Investments", "Miscellaneous",
+  "EMI / Loan Repayment", "Investments", "Misc. Household", "Miscellaneous",
 ] as const;
 
 type RecurringType = "None" | "Monthly";
