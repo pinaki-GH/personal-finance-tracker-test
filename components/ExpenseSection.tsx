@@ -5,8 +5,8 @@ import { getData, saveData } from "../utils/storage";
 import { exportToExcel } from "../utils/exportToExcel";
 
 const EXPENSE_CATEGORIES = [
-  "Housing", "Groceries", "Utilities", "Insurance", "Transport",
-  "Healthcare", "Education", "Entertainment", "Dining Out", "Travel",
+  "Housing", "Groceries", "Shopping", "Utilities", "Insurance", "Transport", "Fuel",
+  "Healthcare", "Education", "Entertainment", "Food Delivery", "Dining Out", "Travel",
   "EMI / Loan Repayment", "Investments", "Miscellaneous",
 ] as const;
 
