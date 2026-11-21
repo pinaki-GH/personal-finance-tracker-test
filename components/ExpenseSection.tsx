@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { getData, saveData } from "../utils/storage";
 import { exportToExcel } from "../utils/exportToExcel";
 
@@ -25,6 +26,7 @@ type Expense = {
 };
 type StoredExpense = Omit<Expense, "expenseDate"> & { expenseDate: string | null };
 type BudgetStore = Record<string, Record<string, number>>;
+type ExpenseImportPreview = { expenses: Expense[]; total: number; fileName: string };
 type Tab = "overview" | "list" | "budget" | "recurring" | "reports";
 
 const today = () => {
@@ -77,6 +79,10 @@ export default function ExpenseSection() {
   const [ownerFilter, setOwnerFilter] = useState("All owners");
   const [notice, setNotice] = useState("");
   const [showCopyConfirmation, setShowCopyConfirmation] = useState(false);
+  const [importPreview, setImportPreview] = useState<ExpenseImportPreview | null>(null);
+  const [importError, setImportError] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const stored = getData<StoredExpense[] | null>("expenses");
@@ -419,6 +425,92 @@ export default function ExpenseSection() {
     })), `expenses-${monthFilter}`);
   };
 
+  const importMonthFile = async (file: File) => {
+    setImportError("");
+    setImportPreview(null);
+    setIsImporting(true);
+    try {
+      if (!/\.xlsx$/i.test(file.name)) {
+        throw new Error("Please select an .xlsx file exported from the Expenses tab.");
+      }
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!sheet) throw new Error("The selected workbook does not contain a worksheet.");
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: "" });
+      if (rows.length < 2) throw new Error("The worksheet does not contain any expense transactions.");
+
+      const headers = (rows[0] as unknown[]).map((value) => String(value ?? "").trim().toLowerCase());
+      const requiredHeaders = ["date", "description", "category", "owner", "recurring", "amount"];
+      const columnIndexes = requiredHeaders.map((header) => headers.indexOf(header));
+      if (columnIndexes.some((index) => index < 0)) {
+        throw new Error("The file headers do not match the Expenses export template. Required columns: Date, Description, Category, Owner, Recurring, Amount.");
+      }
+
+      const imported: Expense[] = [];
+      const errors: string[] = [];
+      rows.slice(1).forEach((row, rowIndex) => {
+        const cells = row as unknown[];
+        if (cells.every((cell) => String(cell ?? "").trim() === "")) return;
+        const [dateCell, descriptionCell, categoryCell, ownerCell, recurringCell, amountCell] =
+          columnIndexes.map((index) => cells[index]);
+        let expenseDate: Date | null = null;
+        if (dateCell instanceof Date && !Number.isNaN(dateCell.getTime())) {
+          expenseDate = new Date(dateCell.getFullYear(), dateCell.getMonth(), dateCell.getDate());
+        } else if (typeof dateCell === "number" && Number.isFinite(dateCell)) {
+          const parsed = XLSX.SSF.parse_date_code(dateCell);
+          if (parsed) expenseDate = parseDate(`${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`);
+        } else {
+          const rawDate = String(dateCell ?? "").trim();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) expenseDate = parseDate(rawDate);
+        }
+        const description = String(descriptionCell ?? "").trim();
+        const category = String(categoryCell ?? "").trim();
+        const owner = String(ownerCell ?? "").trim();
+        const recurringText = String(recurringCell ?? "").trim().toLowerCase();
+        const recurring: RecurringType | null =
+          recurringText === "none" || recurringText === "one-time" || recurringText === "one-time expense" ? "None" :
+          recurringText === "monthly" || recurringText === "schedule" || recurringText === "monthly schedule" ? "Monthly" : null;
+        const amountText = typeof amountCell === "number" ? String(amountCell) : String(amountCell ?? "").replace(/[₹,\s]/g, "");
+        const amount = Number(amountText);
+        const rowNumber = rowIndex + 2;
+        if (!expenseDate) errors.push(`Row ${rowNumber}: invalid or missing date.`);
+        else if (monthKey(expenseDate) !== monthFilter) errors.push(`Row ${rowNumber}: date is outside the selected month (${monthLabel(monthFilter)}).`);
+        if (!description) errors.push(`Row ${rowNumber}: description is required.`);
+        if (!category) errors.push(`Row ${rowNumber}: category is required.`);
+        if (recurring === null) errors.push(`Row ${rowNumber}: Recurring must be None or Monthly.`);
+        if (!amountText || !Number.isFinite(amount) || amount <= 0) errors.push(`Row ${rowNumber}: amount must be greater than zero.`);
+        if (expenseDate && description && category && recurring !== null && Number.isFinite(amount) && amount > 0 && monthKey(expenseDate) === monthFilter) {
+          imported.push({ description, amount: String(amount), category, owner, expenseDate, recurring, recurringKey: undefined });
+        }
+      });
+      if (errors.length) throw new Error(`Import validation failed:\n${errors.slice(0, 8).join("\n")}${errors.length > 8 ? `\nAnd ${errors.length - 8} more issue(s).` : ""}`);
+      if (!imported.length) throw new Error("No valid expense rows were found in the selected file.");
+      setImportPreview({
+        expenses: imported,
+        total: imported.reduce((sum, expense) => sum + Number(expense.amount), 0),
+        fileName: file.name,
+      });
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "The selected file could not be read.");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const confirmImportReplacement = () => {
+    if (!importPreview) return;
+    const otherMonthExpenses = expenses.filter((expense) => monthKey(expense.expenseDate) !== monthFilter);
+    persistExpenses([...otherMonthExpenses, ...importPreview.expenses]);
+    setEditingId(null);
+    setEditError("");
+    setImportPreview(null);
+    setImportError("");
+    setSearch("");
+    setCategoryFilter("All categories");
+    setOwnerFilter("All owners");
+    setNotice(`Imported ${importPreview.expenses.length} transaction(s) for ${monthLabel(monthFilter)}. Existing transactions for that month were replaced.`);
+  };
+
   const tabs: { id: Tab; label: string; sub: string }[] = [
     { id: "overview", label: "Overview", sub: "Monthly snapshot" },
     { id: "list", label: "Expense List", sub: "Transactions" },
@@ -648,7 +740,23 @@ export default function ExpenseSection() {
       {activeTab === "list" && <div className="expense-card" style={cardStyle}>
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <div><h3 style={{ margin: 0, fontSize: 18 }}>Expense List</h3><p style={{ color: "#718096", margin: "5px 0 0", fontSize: 13 }}>{filteredExpenses.length} transaction{filteredExpenses.length === 1 ? "" : "s"} · {money(filteredExpenses.reduce((s,e)=>s+(Number(e.amount)||0),0))} shown</p></div>
-          <button style={buttonStyle} onClick={exportMonth}>Export month to Excel ↓</button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              style={{ display: "none" }}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void importMonthFile(file);
+                event.target.value = "";
+              }}
+            />
+            <button style={buttonStyle} onClick={() => { setImportError(""); importInputRef.current?.click(); }}>
+              Import month from Excel ↑
+            </button>
+            <button style={buttonStyle} onClick={exportMonth}>Export month to Excel ↓</button>
+          </div>
         </div>
         <div className="expense-card" style={{ ...cardStyle, background: "#f7faf8", marginBottom: 18 }}>
           <h4 style={{ margin: "0 0 5px", fontSize: 16 }}>Quick Add Expense</h4>
@@ -798,6 +906,43 @@ export default function ExpenseSection() {
           <button style={{ ...primaryStyle, marginTop: 16 }} onClick={exportMonth}>Export transactions to Excel</button>
         </div>
       </div>}
+      {importError && (
+        <div role="alert" style={{ padding: 12, borderRadius: 10, background: "#fff1f0", color: "#a12a2a", fontSize: 13, whiteSpace: "pre-wrap" }}>
+          <strong>Import not completed</strong>
+          <div style={{ marginTop: 5 }}>{importError}</div>
+          <button style={{ ...buttonStyle, marginTop: 10 }} onClick={() => setImportError("")}>Dismiss</button>
+        </div>
+      )}
+      {isImporting && <div role="status" style={{ color: "#526174", fontSize: 13 }}>Reading and validating the Excel file…</div>}
+      {importPreview && (
+        <div role="presentation" onClick={() => setImportPreview(null)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(15, 23, 42, 0.5)", display: "grid", placeItems: "center", padding: 18 }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="expense-import-title" onClick={(event) => event.stopPropagation()} style={{ width: "min(100%, 620px)", maxHeight: "85vh", overflowY: "auto", background: "#fff", borderRadius: 16, padding: 22, boxShadow: "0 20px 60px rgba(0,0,0,.22)" }}>
+            <h3 id="expense-import-title" style={{ margin: "0 0 8px", fontSize: 19 }}>Replace {monthLabel(monthFilter)} expenses?</h3>
+            <p style={{ color: "#526174", fontSize: 13, lineHeight: 1.5, margin: "0 0 14px" }}>
+              File: <strong>{importPreview.fileName}</strong>. Review the imported transactions before confirming. Existing transactions for {monthLabel(monthFilter)} will be replaced; other months, budgets and recurring schedules will remain unchanged.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 14 }}>
+              <div style={{ background: "#f7f9fc", borderRadius: 10, padding: 12 }}><div style={{ color: "#718096", fontSize: 11 }}>TRANSACTIONS</div><strong style={{ fontSize: 20 }}>{importPreview.expenses.length}</strong></div>
+              <div style={{ background: "#f7f9fc", borderRadius: 10, padding: 12 }}><div style={{ color: "#718096", fontSize: 11 }}>IMPORTED TOTAL</div><strong style={{ fontSize: 20 }}>{money(importPreview.total)}</strong></div>
+            </div>
+            <div style={{ maxHeight: 260, overflow: "auto", border: "1px solid #e2e8f0", borderRadius: 10 }}>
+              <table className="expense-table" style={{ minWidth: 520 }}>
+                <thead><tr><th>DATE</th><th>DESCRIPTION</th><th>CATEGORY</th><th style={{ textAlign: "right" }}>AMOUNT</th></tr></thead>
+                <tbody>{importPreview.expenses.map((expense, index) => (
+                  <tr key={`${dateInput(expense.expenseDate)}-${index}`}>
+                    <td>{dateInput(expense.expenseDate)}</td><td>{expense.description}</td><td>{expense.category}</td>
+                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{money(Number(expense.amount))}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 9, flexWrap: "wrap", marginTop: 18 }}>
+              <button style={buttonStyle} onClick={() => setImportPreview(null)}>Cancel</button>
+              <button style={{ ...primaryStyle, background: "#a12a2a", borderColor: "#a12a2a" }} onClick={confirmImportReplacement}>Replace this month's expenses</button>
+            </div>
+          </div>
+        </div>
+      )}
       <footer style={{ color: "#8a97a6", fontSize: 11, lineHeight: 1.5 }}>Expense data stays in your existing browser storage keys. Scheduled recurring expenses are not treated as actual spend unless saved as a transaction.</footer>
       {showCopyConfirmation && (
         <div role="presentation" onClick={() => setShowCopyConfirmation(false)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(15, 23, 42, 0.45)", display: "grid", placeItems: "center", padding: 20 }}>
